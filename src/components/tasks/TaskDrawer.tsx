@@ -302,14 +302,28 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
               <Calendar size={13} color="#64748b" /> Timeline & Execution
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+              {/* Expected Date */}
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: '12px 14px' }}>
+                <div style={{ fontSize: 11, color: '#166534', fontWeight: 700, marginBottom: 4 }}>
+                  Expected Target
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#14532d' }}>
+                  {fmt(task.expectedDate || task.planned)}
+                </div>
+                <div style={{ fontSize: 10, color: '#15803d', marginTop: 4 }}>
+                  Assigner Goal
+                </div>
+              </div>
+
+              {/* Due Date & Time */}
               <div style={{ background: '#f8fafc', border: '1px solid #e8ecf0', borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Due Date & Time</div>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Committed Due Date</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{fmt(task.planned)}</div>
                 {task.status !== 'Complete 100%' && task.planned && (() => {
                   const dueSt = getTaskDueStatus(task.planned, task.status);
                   return (
-                    <div style={{ marginTop: 6 }}>
+                    <div style={{ marginTop: 4 }}>
                       <span
                         style={{
                           fontSize: 10,
@@ -328,6 +342,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
                 })()}
               </div>
 
+              {/* Actual Date */}
               <div
                 style={{
                   background: isComplete ? '#ecfdf5' : '#f8fafc',
@@ -387,7 +402,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
                   {task.review}
                 </div>
                 <div style={{ fontSize: 11, color: '#a16207', marginTop: 4 }}>
-                  Evaluated against target Due Date & Time SLA standard.
+                  Evaluated against Assigner's Expected Date and Committed Due Date SLA standards.
                 </div>
               </div>
             ) : (
@@ -404,7 +419,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
               >
                 <CheckCircle2 size={16} color="#94a3b8" />
                 <span style={{ fontSize: 12, color: '#64748b' }}>
-                  Weekly review star rating will automatically calculate when task is marked <b>Complete 100%</b> based on deadline adherence.
+                  Weekly review star rating will automatically calculate when task is marked <b>Complete 100%</b> (Evaluates Expected Target &amp; Due Date).
                 </span>
               </div>
             )}

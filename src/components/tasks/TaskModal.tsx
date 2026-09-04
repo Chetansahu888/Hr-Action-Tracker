@@ -12,20 +12,20 @@ interface TaskModalProps {
   onSave: (task: Partial<Task>) => Promise<void>;
 }
 
-const toLocalDatetimeInput = (iso?: string): string => {
+const toLocalDatetimeInput = (iso?: string, fallbackDays = 2.5): string => {
   if (!iso) {
-    const d = new Date(Date.now() + 2.5 * 86400000);
+    const d = new Date(Date.now() + fallbackDays * 86400000);
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
   try {
     const d = new Date(iso);
     if (isNaN(d.getTime())) {
-      const fallback = new Date(Date.now() + 2.5 * 86400000);
+      const fallback = new Date(Date.now() + fallbackDays * 86400000);
       return new Date(fallback.getTime() - fallback.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     }
     return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   } catch {
-    const fallback = new Date(Date.now() + 2.5 * 86400000);
+    const fallback = new Date(Date.now() + fallbackDays * 86400000);
     return new Date(fallback.getTime() - fallback.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
 };
@@ -35,15 +35,30 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
   const [doer, setDoer] = useState<string[]>(
     task?.doer ? task.doer.split(/[,/]/).map(d => d.trim()).filter(Boolean) : []
   );
-  const [dueDateTime, setDueDateTime] = useState<string>(toLocalDatetimeInput(task?.planned));
+  const [expectedDateTime, setExpectedDateTime] = useState<string>(
+    toLocalDatetimeInput(task?.expectedDate || task?.planned, 2.5)
+  );
+  const [dueDateTime, setDueDateTime] = useState<string>(
+    toLocalDatetimeInput(task?.planned, 3.0)
+  );
   const [saving, setSaving] = useState(false);
 
-  const applyPreset = (daysFromNow: number, setHour = 18, setMinute = 0) => {
+  const applyExpectedPreset = (daysFromNow: number, setHour = 18, setMinute = 0) => {
     const target = new Date(Date.now() + daysFromNow * 86400000);
     if (setHour !== undefined) {
       target.setHours(setHour, setMinute, 0, 0);
     }
-    setDueDateTime(new Date(target.getTime() - target.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+    const val = new Date(target.getTime() - target.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setExpectedDateTime(val);
+  };
+
+  const applyDuePreset = (daysFromNow: number, setHour = 18, setMinute = 0) => {
+    const target = new Date(Date.now() + daysFromNow * 86400000);
+    if (setHour !== undefined) {
+      target.setHours(setHour, setMinute, 0, 0);
+    }
+    const val = new Date(target.getTime() - target.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setDueDateTime(val);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -52,20 +67,26 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
       toast.error('Please enter a problem or task description');
       return;
     }
+    if (!expectedDateTime) {
+      toast.error('Please set an Expected Date & Time');
+      return;
+    }
     if (!dueDateTime) {
-      toast.error('Please set a target Due Date and Time');
+      toast.error('Please set a Committed Due Date & Time');
       return;
     }
 
     setSaving(true);
     try {
       const plannedIso = new Date(dueDateTime).toISOString();
+      const expectedIso = new Date(expectedDateTime).toISOString();
       await onSave({
         ...(task || {}),
         problem: problem.trim(),
         doer: doer.join(', '),
         planned: plannedIso,
         dueDate: plannedIso,
+        expectedDate: expectedIso,
         status: task?.status || 'Pending',
       });
     } catch {
@@ -91,12 +112,13 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
       <div
         style={{
           width: '100%',
-          maxWidth: 540,
+          maxWidth: 580,
+          maxHeight: '92vh',
           backgroundColor: '#ffffff',
           borderRadius: 20,
           boxShadow: '0 20px 48px rgba(0, 0, 0, 0.2)',
           position: 'relative',
-          overflow: 'visible',
+          overflowY: 'auto',
           animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
@@ -110,12 +132,15 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
             justifyContent: 'space-between',
             background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)',
             borderRadius: '20px 20px 0 0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
           }}
         >
           <div>
             <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</h3>
             <p style={{ fontSize: 12, color: '#64748b', margin: '3px 0 0' }}>
-              {task ? `Editing Task #${task.sno}` : 'Create a new action item for HR Department with target SLA deadline'}
+              {task ? `Editing Task #${task.sno}` : 'Create a new action item with Expected & Due Date SLA targets'}
             </p>
           </div>
           <button
@@ -200,80 +225,147 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
             />
           </div>
 
-          {/* Target Due Date & Time Picker */}
-          <div>
+          {/* ── 1. Expected Date & Time (Assigner Target) ── */}
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '14px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Calendar size={14} color="#047857" />
-                Target Due Date &amp; Time (Deadline) <span style={{ color: '#ef4444' }}>*</span>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Calendar size={14} color="#16a34a" />
+                Expected Target Date &amp; Time (Task Assigner) <span style={{ color: '#ef4444' }}>*</span>
               </label>
-              <span style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>SLA Rating Key</span>
+              <span style={{ fontSize: 11, color: '#15803d', fontWeight: 700, background: '#dcfce7', padding: '2px 8px', borderRadius: 6 }}>
+                ⭐⭐⭐⭐⭐ On Expected Time
+              </span>
             </div>
+            <p style={{ fontSize: 11, color: '#166534', margin: '0 0 8px', lineHeight: 1.4 }}>
+              Task assign karne wale ke according ideal time (e.g. standard 2.5 din SLA target).
+            </p>
 
-            <div style={{ position: 'relative' }}>
-              <input
-                type="datetime-local"
-                required
-                value={dueDateTime}
-                onChange={e => setDueDateTime(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: 42,
-                  padding: '0 12px',
-                  borderRadius: 10,
-                  border: '1px solid #cbd5e1',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#0f172a',
-                  outline: 'none',
-                  background: '#ffffff',
-                }}
-                onFocus={e => {
-                  e.currentTarget.style.borderColor = '#047857';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(4,120,87,0.15)';
-                }}
-                onBlur={e => {
-                  e.currentTarget.style.borderColor = '#cbd5e1';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
+            <input
+              type="datetime-local"
+              required
+              value={expectedDateTime}
+              onChange={e => setExpectedDateTime(e.target.value)}
+              style={{
+                width: '100%',
+                height: 40,
+                padding: '0 12px',
+                borderRadius: 10,
+                border: '1px solid #86efac',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#0f172a',
+                outline: 'none',
+                background: '#ffffff',
+              }}
+            />
 
-            {/* Quick SLA Presets Buttons */}
+            {/* Quick Presets for Expected Date */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>Quick Presets:</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#166534' }}>Presets:</span>
               {[
-                { label: '+2.5 Days (SLA)', action: () => applyPreset(2.5, 18, 0) },
-                { label: 'Today (6 PM)', action: () => applyPreset(0, 18, 0) },
-                { label: 'Tomorrow (6 PM)', action: () => applyPreset(1, 18, 0) },
-                { label: '+1 Week', action: () => applyPreset(7, 18, 0) },
+                { label: '+2.5 Days (SLA)', action: () => applyExpectedPreset(2.5, 18, 0) },
+                { label: 'Today (6 PM)', action: () => applyExpectedPreset(0, 18, 0) },
+                { label: 'Tomorrow (6 PM)', action: () => applyExpectedPreset(1, 18, 0) },
+                { label: '+3 Days', action: () => applyExpectedPreset(3, 18, 0) },
               ].map((p, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={p.action}
                   style={{
-                    padding: '3px 9px',
+                    padding: '3px 8px',
                     borderRadius: 6,
                     fontSize: 11,
                     fontWeight: 600,
-                    background: '#ecfdf5',
-                    border: '1px solid #a7f3d0',
-                    color: '#047857',
+                    background: '#ffffff',
+                    border: '1px solid #86efac',
+                    color: '#15803d',
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#d1fae5'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#ecfdf5'; }}
                 >
                   {p.label}
                 </button>
               ))}
             </div>
+          </div>
 
-            <p style={{ fontSize: 11, color: '#64748b', margin: '6px 0 0', lineHeight: 1.4 }}>
-              Weekly Review rating (⭐⭐⭐⭐⭐) will auto-evaluate whether this task is marked <b>Complete 100%</b> on or before this exact deadline.
+          {/* ── 2. Committed Due Date & Time (Deadline) ── */}
+          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 14, padding: '14px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Clock size={14} color="#047857" />
+                Committed Due Date &amp; Time (Deadline) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <span style={{ fontSize: 11, color: '#047857', fontWeight: 700, background: '#ecfdf5', padding: '2px 8px', borderRadius: 6 }}>
+                ⭐⭐⭐⭐⭐ On Time
+              </span>
+            </div>
+            <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 8px', lineHeight: 1.4 }}>
+              Assigned person ke according committed date & time jab tak complete hona compulsory hai.
             </p>
+
+            <input
+              type="datetime-local"
+              required
+              value={dueDateTime}
+              onChange={e => setDueDateTime(e.target.value)}
+              style={{
+                width: '100%',
+                height: 40,
+                padding: '0 12px',
+                borderRadius: 10,
+                border: '1px solid #cbd5e1',
+                fontSize: 13,
+                fontWeight: 600,
+                color: '#0f172a',
+                outline: 'none',
+                background: '#ffffff',
+              }}
+            />
+
+            {/* Quick Presets for Due Date */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b' }}>Presets:</span>
+              {[
+                { label: 'Same as Expected', action: () => setDueDateTime(expectedDateTime) },
+                { label: '+3 Days (6 PM)', action: () => applyDuePreset(3, 18, 0) },
+                { label: '+5 Days (6 PM)', action: () => applyDuePreset(5, 18, 0) },
+                { label: '+1 Week', action: () => applyDuePreset(7, 18, 0) },
+              ].map((p, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={p.action}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    color: '#334155',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SLA Rating Evaluation Matrix Guide */}
+          <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: 12, padding: '12px 14px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#854d0e', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              📊 Weekly Review Star Rating Rules
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11, color: '#713f12' }}>
+              <div>• <b>Within Expected Date:</b> ⭐⭐⭐⭐⭐ (On Expected Time)</div>
+              <div>• <b>Within Due Date:</b> ⭐⭐⭐⭐⭐ (On Time)</div>
+              <div>• <b>Delay ≤ 1 Day:</b> ⭐⭐⭐⭐ (Minor Delay)</div>
+              <div>• <b>Delay ≤ 3 Days:</b> ⭐⭐⭐ (Delayed)</div>
+              <div>• <b>Delay ≤ 7 Days:</b> ⭐⭐ (Needs Improvement)</div>
+              <div>• <b>Delay &gt; 7 Days:</b> ⭐ (Poor / Overdue)</div>
+            </div>
           </div>
 
           {/* Assign Doers (with custom MultiSelect) */}

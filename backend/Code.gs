@@ -11,13 +11,14 @@ const TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
 const TELEGRAM_CHAT_ID = 'YOUR_CHAT_ID_HERE';
 
 const COL = {
-  PLANNED: 1, // Col A
-  ACTUAL: 2,  // Col B
+  PLANNED: 1, // Col A (Committed Due Date & Time)
+  ACTUAL: 2,  // Col B (Actual Completion Date & Time)
   SNO: 3,     // Col C
   PROBLEM: 4, // Col D
   DOER: 5,    // Col E
   STATUS: 6,  // Col F
-  REVIEW: 7   // Col G
+  REVIEW: 7,  // Col G (Weekly Review Star Rating)
+  EXPECTED: 8 // Col H (Expected Target Date & Time)
 };
 
 /**
@@ -165,9 +166,9 @@ function getSheet() {
  */
 function initSheetHeader_(sheet) {
   const headers = [
-    ['Planned', 'Actual', 'S.No.', 'Problem / Task', 'Name of Doer', 'Status', 'Weekly Review']
+    ['Planned / Due Date', 'Actual', 'S.No.', 'Problem / Task', 'Name of Doer', 'Status', 'Weekly Review', 'Expected Date']
   ];
-  sheet.getRange(1, 1, 1, 7).setValues(headers)
+  sheet.getRange(1, 1, 1, 8).setValues(headers)
     .setBackground('#0d1b2e')
     .setFontColor('#ffffff')
     .setFontWeight('bold')
@@ -175,13 +176,14 @@ function initSheetHeader_(sheet) {
     .setHorizontalAlignment('center');
   
   sheet.setFrozenRows(1);
-  sheet.setColumnWidth(1, 140); // Planned
+  sheet.setColumnWidth(1, 150); // Planned / Due Date
   sheet.setColumnWidth(2, 140); // Actual
   sheet.setColumnWidth(3, 70);  // S.No.
-  sheet.setColumnWidth(4, 380); // Problem
+  sheet.setColumnWidth(4, 360); // Problem
   sheet.setColumnWidth(5, 180); // Doer
   sheet.setColumnWidth(6, 140); // Status
-  sheet.setColumnWidth(7, 180); // Review
+  sheet.setColumnWidth(7, 210); // Review
+  sheet.setColumnWidth(8, 150); // Expected Date
 }
 
 /**
@@ -205,7 +207,8 @@ function getTasks() {
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1) return [];
     
-    const data = sheet.getRange(2, 1, lastRow - 1, 7).getValues();
+    const maxCols = Math.max(sheet.getLastColumn(), 8);
+    const data = sheet.getRange(2, 1, lastRow - 1, maxCols).getValues();
     
     return data.map((row, index) => {
       let plannedStr = '';
@@ -218,10 +221,18 @@ function getTasks() {
         try { actualStr = new Date(row[COL.ACTUAL - 1]).toISOString(); }
         catch (e) { actualStr = String(row[COL.ACTUAL - 1]); }
       }
+      let expectedStr = '';
+      if (row[COL.EXPECTED - 1]) {
+        try { expectedStr = new Date(row[COL.EXPECTED - 1]).toISOString(); }
+        catch (e) { expectedStr = String(row[COL.EXPECTED - 1]); }
+      } else {
+        expectedStr = plannedStr;
+      }
       
       return {
         rowIndex: index + 2,
         planned: plannedStr,
+        expectedDate: expectedStr,
         actual: actualStr,
         sno: Number(row[COL.SNO - 1]) || (index + 1),
         problem: String(row[COL.PROBLEM - 1] || ''),
@@ -257,6 +268,13 @@ function addTask(task) {
       if (!isNaN(parsed.getTime())) plannedDate = parsed;
     } catch(e) {}
   }
+  let expectedDate = plannedDate;
+  if (task.expectedDate) {
+    try {
+      const parsed = new Date(task.expectedDate);
+      if (!isNaN(parsed.getTime())) expectedDate = parsed;
+    } catch(e) {}
+  }
   const newRow = [
     plannedDate,
     '',
@@ -264,7 +282,8 @@ function addTask(task) {
     task.problem || '',
     task.doer || '',
     task.status || 'Pending',
-    ''
+    '',
+    expectedDate
   ];
   
   sheet.appendRow(newRow);
@@ -273,6 +292,7 @@ function addTask(task) {
   logAuditEntry_(nextSno, task.problem || '', task.doer || '', 'CREATED', [
     { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: task.problem || '' },
     { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: task.doer || 'Unassigned' },
+    { field: 'expectedDate', fieldLabel: 'Expected Date & Time', oldValue: '—', newValue: expectedDate.toISOString() },
     { field: 'planned', fieldLabel: 'Due Date & Time', oldValue: '—', newValue: plannedDate.toISOString() },
     { field: 'status', fieldLabel: 'Initial Status', oldValue: '—', newValue: task.status || 'Pending' }
   ]);
@@ -294,6 +314,7 @@ function updateTask(task) {
   if (rowIndex === -1) throw new Error("Task not found");
   
   const oldPlanned = sheet.getRange(rowIndex, COL.PLANNED).getValue();
+  const oldExpected = sheet.getLastColumn() >= COL.EXPECTED ? sheet.getRange(rowIndex, COL.EXPECTED).getValue() : null;
   const oldProblem = sheet.getRange(rowIndex, COL.PROBLEM).getValue();
   const oldDoer = sheet.getRange(rowIndex, COL.DOER).getValue();
   const oldStatus = sheet.getRange(rowIndex, COL.STATUS).getValue();
@@ -303,6 +324,14 @@ function updateTask(task) {
       const parsed = new Date(task.planned);
       if (!isNaN(parsed.getTime())) {
         sheet.getRange(rowIndex, COL.PLANNED).setValue(parsed);
+      }
+    } catch(e) {}
+  }
+  if (task.expectedDate) {
+    try {
+      const parsed = new Date(task.expectedDate);
+      if (!isNaN(parsed.getTime())) {
+        sheet.getRange(rowIndex, COL.EXPECTED).setValue(parsed);
       }
     } catch(e) {}
   }
@@ -319,6 +348,9 @@ function updateTask(task) {
   }
   
   const changes = [];
+  if (task.expectedDate && String(oldExpected) !== String(task.expectedDate)) {
+    changes.push({ field: 'expectedDate', fieldLabel: 'Expected Date & Time', oldValue: String(oldExpected || '—'), newValue: String(task.expectedDate) });
+  }
   if (task.planned && String(oldPlanned) !== String(task.planned)) {
     changes.push({ field: 'planned', fieldLabel: 'Due Date & Time', oldValue: String(oldPlanned || '—'), newValue: String(task.planned) });
   }
@@ -554,21 +586,38 @@ function handleActualTimestamp_(sheet, rowIndex, isComplete) {
 function computeWeeklyReview_(sheet, rowIndex) {
   const planned = sheet.getRange(rowIndex, COL.PLANNED).getValue();
   const actual = sheet.getRange(rowIndex, COL.ACTUAL).getValue();
+  let expected = null;
+  if (sheet.getLastColumn() >= COL.EXPECTED) {
+    expected = sheet.getRange(rowIndex, COL.EXPECTED).getValue();
+  }
   
-  if (!planned || !actual) return;
+  if (!actual) return;
   
-  const pDate = new Date(planned);
   const aDate = new Date(actual);
+  if (isNaN(aDate.getTime())) return;
   
-  if (isNaN(pDate.getTime()) || isNaN(aDate.getTime())) return;
+  const pDate = planned ? new Date(planned) : null;
+  const eDate = expected ? new Date(expected) : null;
   
-  // If completed on or before Due Date/Time
-  if (aDate.getTime() <= pDate.getTime()) {
+  // 1. If completed on or before Assigner's Expected Date
+  if (eDate && !isNaN(eDate.getTime()) && aDate.getTime() <= eDate.getTime()) {
+    sheet.getRange(rowIndex, COL.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Expected Time)');
+    return;
+  }
+  
+  // 2. If completed on or before Committed Due Date
+  if (pDate && !isNaN(pDate.getTime()) && aDate.getTime() <= pDate.getTime()) {
     sheet.getRange(rowIndex, COL.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Time)');
     return;
   }
   
-  const delayDays = (aDate.getTime() - pDate.getTime()) / (1000 * 60 * 60 * 24);
+  const refDate = (pDate && !isNaN(pDate.getTime())) ? pDate : eDate;
+  if (!refDate || isNaN(refDate.getTime())) {
+    sheet.getRange(rowIndex, COL.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Time)');
+    return;
+  }
+  
+  const delayDays = (aDate.getTime() - refDate.getTime()) / (1000 * 60 * 60 * 24);
   
   let review = '';
   if (delayDays <= 1.0) {

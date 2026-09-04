@@ -10,6 +10,7 @@ export interface Task {
   status: TaskStatus;
   review: string;
   dueDate?: string; // Optional alias for planned due date & time
+  expectedDate?: string; // ISO date-time string for Assigner Target Expected Date & Time
 }
 
 export interface DashboardData {

@@ -6,21 +6,35 @@ const RETENTION_DAYS = 30;
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export const calculateReview = (dueDateTime: string, actualCompletionTime: string): string => {
-  if (!dueDateTime || !actualCompletionTime) return '';
+export const calculateReview = (
+  dueDateTime: string,
+  actualCompletionTime: string,
+  expectedDateTime?: string
+): string => {
+  if (!actualCompletionTime) return '';
   try {
-    const dueTime = new Date(dueDateTime).getTime();
     const actualTime = new Date(actualCompletionTime).getTime();
+    if (isNaN(actualTime)) return '';
 
-    if (isNaN(dueTime) || isNaN(actualTime)) return '';
+    const expectedTime = expectedDateTime ? new Date(expectedDateTime).getTime() : NaN;
+    const dueTime = dueDateTime ? new Date(dueDateTime).getTime() : NaN;
 
-    // If completed on or before Due Date & Time
-    if (actualTime <= dueTime) {
+    // 1. If completed on or before Expected Date & Time
+    if (!isNaN(expectedTime) && actualTime <= expectedTime) {
+      return '⭐⭐⭐⭐⭐ Excellent (On Expected Time)';
+    }
+
+    // 2. If completed on or before Due Date & Time (after expected date or if expected date not set)
+    if (!isNaN(dueTime) && actualTime <= dueTime) {
       return '⭐⭐⭐⭐⭐ Excellent (On Time)';
     }
 
-    // Calculate delay in days
-    const delayDays = (actualTime - dueTime) / (1000 * 60 * 60 * 24);
+    // Reference deadline for calculating delay
+    const refDeadline = !isNaN(dueTime) ? dueTime : expectedTime;
+    if (isNaN(refDeadline)) return '⭐⭐⭐⭐⭐ Excellent (On Time)';
+
+    // Calculate delay in days past Due Date
+    const delayDays = (actualTime - refDeadline) / (1000 * 60 * 60 * 24);
 
     if (delayDays <= 1.0) return '⭐⭐⭐⭐ Very Good (Minor Delay)';
     if (delayDays <= 3.0) return '⭐⭐⭐ Good (Delayed)';
@@ -493,10 +507,12 @@ export const taskService = {
     }
 
     const planned = task.planned || task.dueDate || new Date(Date.now() + 2.5 * 86400000).toISOString();
+    const expectedDate = task.expectedDate || planned;
     const newTask: Task = {
       rowIndex: mockTasks.length + 2,
       sno: nextSno,
       planned,
+      expectedDate,
       actual: '',
       problem: task.problem || '',
       doer: task.doer || '',
@@ -505,7 +521,7 @@ export const taskService = {
     };
     if (newTask.status === 'Complete 100%') {
       newTask.actual = new Date().toISOString();
-      newTask.review = calculateReview(planned, newTask.actual);
+      newTask.review = calculateReview(planned, newTask.actual, expectedDate);
     }
     mockTasks = [newTask, ...mockTasks.filter(t => t.sno !== nextSno)];
     saveStoredTasks(mockTasks);
@@ -514,6 +530,7 @@ export const taskService = {
     logAudit(nextSno, newTask.problem, newTask.doer, 'CREATED', [
       { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: newTask.problem },
       { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: newTask.doer || 'Unassigned' },
+      { field: 'expectedDate', fieldLabel: 'Expected Date & Time', oldValue: '—', newValue: expectedDate },
       { field: 'planned', fieldLabel: 'Due Date & Time', oldValue: '—', newValue: planned },
       { field: 'status', fieldLabel: 'Initial Status', oldValue: '—', newValue: newTask.status },
     ]);
@@ -541,6 +558,14 @@ export const taskService = {
           fieldLabel: 'Name of Doer(s)',
           oldValue: old.doer || 'Unassigned',
           newValue: task.doer || 'Unassigned',
+        });
+      }
+      if (task.expectedDate && old.expectedDate !== task.expectedDate) {
+        changes.push({
+          field: 'expectedDate',
+          fieldLabel: 'Expected Date & Time',
+          oldValue: old.expectedDate || '—',
+          newValue: task.expectedDate || '—',
         });
       }
       if (task.planned && old.planned !== task.planned) {
@@ -600,7 +625,7 @@ export const taskService = {
       const updated: Task = { ...existing, ...task };
       if (existing.status !== 'Complete 100%' && task.status === 'Complete 100%') {
         updated.actual = new Date().toISOString();
-        updated.review = calculateReview(updated.planned, updated.actual);
+        updated.review = calculateReview(updated.planned, updated.actual, updated.expectedDate);
       } else if (existing.status === 'Complete 100%' && task.status !== 'Complete 100%') {
         updated.actual = '';
         updated.review = '';
@@ -625,7 +650,7 @@ export const taskService = {
     if (oldStatus !== 'Complete 100%' && status === 'Complete 100%') {
       const planned = existing?.planned || new Date().toISOString();
       const actual = new Date().toISOString();
-      const review = calculateReview(planned, actual);
+      const review = calculateReview(planned, actual, existing?.expectedDate);
       changes.push({
         field: 'actual',
         fieldLabel: 'Actual Completion',
@@ -670,7 +695,7 @@ export const taskService = {
       const updated = { ...mockTasks[index], status };
       if (oldStatus !== 'Complete 100%' && status === 'Complete 100%') {
         updated.actual = new Date().toISOString();
-        updated.review = calculateReview(updated.planned, updated.actual);
+        updated.review = calculateReview(updated.planned, updated.actual, updated.expectedDate);
       } else if (oldStatus === 'Complete 100%' && status !== 'Complete 100%') {
         updated.actual = '';
         updated.review = '';
