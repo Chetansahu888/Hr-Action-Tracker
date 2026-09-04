@@ -8,6 +8,7 @@ interface TaskModalProps {
   title: string;
   task?: Task;
   doerOptions: string[];
+  assignerOptions?: string[];
   onClose: () => void;
   onSave: (task: Partial<Task>) => Promise<void>;
 }
@@ -30,10 +31,18 @@ const toLocalDatetimeInput = (iso?: string, fallbackDays = 2.5): string => {
   }
 };
 
-export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, onClose, onSave }) => {
+const DEFAULT_ASSIGNERS = ['Management', 'Director', 'HOD', 'HR Head', 'Admin', 'MD Alaudin', 'Bhupendra', 'Deepak'];
+
+export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, assignerOptions = DEFAULT_ASSIGNERS, onClose, onSave }) => {
   const [problem, setProblem] = useState(task?.problem || '');
   const [doer, setDoer] = useState<string[]>(
     task?.doer ? task.doer.split(/[,/]/).map(d => d.trim()).filter(Boolean) : []
+  );
+  const [assignedBy, setAssignedBy] = useState<string>(
+    task?.assignedBy || (assignerOptions.length > 0 ? assignerOptions[0] : 'Management')
+  );
+  const [isCustomAssigner, setIsCustomAssigner] = useState(
+    Boolean(task?.assignedBy && !assignerOptions.includes(task.assignedBy))
   );
   const [expectedDateTime, setExpectedDateTime] = useState<string>(
     toLocalDatetimeInput(task?.expectedDate || task?.planned, 2.5)
@@ -84,6 +93,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
         ...(task || {}),
         problem: problem.trim(),
         doer: doer.join(', '),
+        assignedBy: assignedBy.trim() || 'Management',
         planned: plannedIso,
         dueDate: plannedIso,
         expectedDate: expectedIso,
@@ -226,8 +236,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
           </div>
 
           {/* ── 1. Expected Date & Time (Assigner Target) ── */}
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Calendar size={14} color="#16a34a" />
                 Expected Target Date &amp; Time (Task Assigner) <span style={{ color: '#ef4444' }}>*</span>
@@ -236,9 +246,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
                 ⭐⭐⭐⭐⭐ On Expected Time
               </span>
             </div>
-            <p style={{ fontSize: 11, color: '#166534', margin: '0 0 8px', lineHeight: 1.4 }}>
-              Task assign karne wale ke according ideal time (e.g. standard 2.5 din SLA target).
-            </p>
 
             <input
               type="datetime-local"
@@ -247,7 +254,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
               onChange={e => setExpectedDateTime(e.target.value)}
               style={{
                 width: '100%',
-                height: 40,
+                height: 38,
                 padding: '0 12px',
                 borderRadius: 10,
                 border: '1px solid #86efac',
@@ -290,8 +297,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
           </div>
 
           {/* ── 2. Committed Due Date & Time (Deadline) ── */}
-          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 14, padding: '14px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 14, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Clock size={14} color="#047857" />
                 Committed Due Date &amp; Time (Deadline) <span style={{ color: '#ef4444' }}>*</span>
@@ -300,9 +307,6 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
                 ⭐⭐⭐⭐⭐ On Time
               </span>
             </div>
-            <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 8px', lineHeight: 1.4 }}>
-              Assigned person ke according committed date & time jab tak complete hona compulsory hai.
-            </p>
 
             <input
               type="datetime-local"
@@ -311,7 +315,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
               onChange={e => setDueDateTime(e.target.value)}
               style={{
                 width: '100%',
-                height: 40,
+                height: 38,
                 padding: '0 12px',
                 borderRadius: 10,
                 border: '1px solid #cbd5e1',
@@ -353,52 +357,97 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
             </div>
           </div>
 
-          {/* SLA Rating Evaluation Matrix Guide */}
-          <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: 12, padding: '12px 14px' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#854d0e', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              📊 Weekly Review Star Rating Rules
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11, color: '#713f12' }}>
-              <div>• <b>Within Expected Date:</b> ⭐⭐⭐⭐⭐ (On Expected Time)</div>
-              <div>• <b>Within Due Date:</b> ⭐⭐⭐⭐⭐ (On Time)</div>
-              <div>• <b>Delay ≤ 1 Day:</b> ⭐⭐⭐⭐ (Minor Delay)</div>
-              <div>• <b>Delay ≤ 3 Days:</b> ⭐⭐⭐ (Delayed)</div>
-              <div>• <b>Delay ≤ 7 Days:</b> ⭐⭐ (Needs Improvement)</div>
-              <div>• <b>Delay &gt; 7 Days:</b> ⭐ (Poor / Overdue)</div>
-            </div>
-          </div>
+          {/* Assign By & Assign Doer(s) Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14 }}>
+            {/* Assign By (Task Giver - From Master Sheet Col A) */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>
+                  Assign By (Task Giver) <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomAssigner(!isCustomAssigner)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: '#2563eb',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  {isCustomAssigner ? '← Choose from Master' : '+ Custom Name'}
+                </button>
+              </div>
 
-          {/* Assign Doers (with custom MultiSelect) */}
-          <div style={{ position: 'relative', zIndex: 50 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
-              Assign Doer(s)
-            </label>
-            <MultiSelect
-              options={doerOptions}
-              selected={doer}
-              onChange={setDoer}
-              placeholder="Select registered HR person(s)..."
-            />
-            <p style={{ fontSize: 11, color: '#94a3b8', margin: '6px 0 0' }}>
-              Assign one or more registered HR team members.
-            </p>
-          </div>
+              {isCustomAssigner ? (
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter assigner name..."
+                  value={assignedBy}
+                  onChange={e => setAssignedBy(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: 40,
+                    padding: '0 12px',
+                    borderRadius: 10,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#0f172a',
+                    outline: 'none',
+                    background: '#ffffff',
+                  }}
+                />
+              ) : (
+                <select
+                  value={assignedBy}
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      setIsCustomAssigner(true);
+                      setAssignedBy('');
+                    } else {
+                      setAssignedBy(e.target.value);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    height: 40,
+                    padding: '0 10px',
+                    borderRadius: 10,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#0f172a',
+                    outline: 'none',
+                    background: '#ffffff',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {assignerOptions.map(opt => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                  <option value="__custom__">+ Other / Custom Name...</option>
+                </select>
+              )}
+            </div>
 
-          {/* Informational SLA badge */}
-          <div
-            style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: 12,
-              padding: '12px 14px',
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 10,
-            }}
-          >
-            <Sparkles size={16} color="#047857" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.5 }}>
-              <strong>Table-Operated Workflow:</strong> Task initial status is set to <b>Pending</b>. You can update the live progress (25%, 50%, 75%, 100%) anytime directly from the Tasks table dropdown.
+            {/* Assign Doers (with custom MultiSelect) */}
+            <div style={{ position: 'relative', zIndex: 50 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                Assign Doer(s)
+              </label>
+              <MultiSelect
+                options={doerOptions}
+                selected={doer}
+                onChange={setDoer}
+                placeholder="Select registered HR person(s)..."
+              />
             </div>
           </div>
 

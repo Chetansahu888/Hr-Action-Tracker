@@ -138,6 +138,17 @@ export const Tasks: React.FC = () => {
     return users.map(u => u.name).filter(Boolean).sort();
   }, [users]);
 
+  // Master Sheet Column A assigners
+  const [assignerOptions, setAssignerOptions] = useState<string[]>([
+    'Management', 'Director', 'HOD', 'HR Head', 'Admin', 'MD Alaudin', 'Bhupendra', 'Deepak'
+  ]);
+
+  useEffect(() => {
+    taskService.getAssigners().then(opts => {
+      if (opts && opts.length > 0) setAssignerOptions(opts);
+    });
+  }, []);
+
   // Isolate tasks: Admin sees all tasks; normal User sees only tasks where their name is assigned
   const visibleTasks = useMemo(() => {
     if (isAdmin) return tasks;
@@ -148,7 +159,7 @@ export const Tasks: React.FC = () => {
     let r = [...visibleTasks];
     if (search.trim()) {
       const q = search.toLowerCase();
-      r = r.filter(t => t.problem?.toLowerCase().includes(q) || t.doer?.toLowerCase().includes(q));
+      r = r.filter(t => t.problem?.toLowerCase().includes(q) || t.doer?.toLowerCase().includes(q) || t.assignedBy?.toLowerCase().includes(q));
     }
     if (statusFilter !== 'All') r = r.filter(t => t.status === statusFilter);
     if (doerFilter !== 'All')   r = r.filter(t => t.doer?.includes(doerFilter));
@@ -688,6 +699,11 @@ export const Tasks: React.FC = () => {
                           </span>
                           <ExternalLink size={12} color="#cbd5e1" style={{ flexShrink: 0, marginTop: 3 }} />
                         </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                          <span style={{ fontSize: 11, color: '#475569', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
+                            Assign By: <strong style={{ color: '#1d4ed8' }}>{task.assignedBy || 'Management'}</strong>
+                          </span>
+                        </div>
                       </td>
 
                       {/* Doer Chips */}
@@ -1061,6 +1077,7 @@ export const Tasks: React.FC = () => {
         <TaskModal
           title="Add HR Action Task"
           doerOptions={doerOptions}
+          assignerOptions={assignerOptions}
           onClose={() => setAddOpen(false)}
           onSave={async taskData => {
             try {
@@ -1081,6 +1098,7 @@ export const Tasks: React.FC = () => {
           title="Edit HR Action Task"
           task={editTask}
           doerOptions={doerOptions}
+          assignerOptions={assignerOptions}
           onClose={() => setEditTask(null)}
           onSave={async taskData => {
             try {

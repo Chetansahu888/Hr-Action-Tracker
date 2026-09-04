@@ -246,51 +246,92 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
             </div>
           )}
 
-          {/* Assigned Doers */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-              <User size={13} color="#64748b" /> Assigned HR Doer(s)
+          {/* People: Assign By & Assigned Doers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14 }}>
+            {/* Assign By (Task Giver) */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                <User size={13} color="#2563eb" /> Assign By (Task Giver)
+              </div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 12px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 99,
+                }}
+              >
+                <div
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: '50%',
+                    background: '#2563eb',
+                    color: '#fff',
+                    fontSize: 10,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {(task.assignedBy || 'M').charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>
+                  {task.assignedBy || 'Management'}
+                </span>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {doers.length > 0 ? (
-                doers.map((d, i) => {
-                  const col = DOER_COLORS[i % DOER_COLORS.length];
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '6px 12px',
-                        background: col.bg,
-                        border: `1px solid ${col.border}`,
-                        borderRadius: 99,
-                      }}
-                    >
+
+            {/* Assigned Doers */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                <User size={13} color="#047857" /> Assigned HR Doer(s)
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {doers.length > 0 ? (
+                  doers.map((d, i) => {
+                    const col = DOER_COLORS[i % DOER_COLORS.length];
+                    return (
                       <div
+                        key={i}
                         style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: '50%',
-                          background: col.avatarBg,
-                          color: '#fff',
-                          fontSize: 10,
-                          fontWeight: 800,
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
+                          gap: 6,
+                          padding: '5px 10px',
+                          background: col.bg,
+                          border: `1px solid ${col.border}`,
+                          borderRadius: 99,
                         }}
                       >
-                        {d.charAt(0).toUpperCase()}
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: col.avatarBg,
+                            color: '#fff',
+                            fontSize: 10,
+                            fontWeight: 800,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {d.charAt(0).toUpperCase()}
+                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: col.text }}>{d}</span>
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: col.text }}>{d}</span>
-                    </div>
-                  );
-                })
-              ) : (
-                <span style={{ fontSize: 13, color: '#94a3b8', fontStyle: 'italic' }}>No one assigned yet</span>
-              )}
+                    );
+                  })
+                ) : (
+                  <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No one assigned</span>
+                )}
+              </div>
             </div>
           </div>
 

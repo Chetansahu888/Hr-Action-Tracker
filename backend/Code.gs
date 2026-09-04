@@ -1,8 +1,8 @@
 /**
  * =========================================================================
- * HR Action Tracker — Google Apps Script Production Backend
+ * HR Action Tracker — Google Apps Script Production Backend (JavaScript / .gs)
  * Tab Name: "Action Tracker HR Department"
- * Architecture: 7-Column Schema (Planned, Actual, S.No, Problem, Doer, Status, Review)
+ * Master Tab: "Master" (Column A for Assign By list)
  * =========================================================================
  */
 
@@ -10,30 +10,26 @@ const SHEET_NAME = 'Action Tracker HR Department';
 const TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
 const TELEGRAM_CHAT_ID = 'YOUR_CHAT_ID_HERE';
 
+// Standard Column Indices (Default 9-column schema)
 const COL = {
-  PLANNED: 1, // Col A (Committed Due Date & Time)
-  ACTUAL: 2,  // Col B (Actual Completion Date & Time)
-  SNO: 3,     // Col C
-  PROBLEM: 4, // Col D
-  DOER: 5,    // Col E
-  STATUS: 6,  // Col F
-  REVIEW: 7,  // Col G (Weekly Review Star Rating)
-  EXPECTED: 8 // Col H (Expected Target Date & Time)
+  PLANNED: 1,     // Col A: Planned / Due Date
+  ACTUAL: 2,      // Col B: Actual Completion Date & Time
+  SNO: 3,         // Col C: S.No.
+  PROBLEM: 4,     // Col D: Problem / Task
+  ASSIGNED_BY: 5, // Col E: Assign By (Task Giver)
+  DOER: 6,        // Col F: Name Of Doer
+  STATUS: 7,      // Col G: Status
+  REVIEW: 8,      // Col H: Weekly Review
+  EXPECTED: 9     // Col I: Expected Date
 };
 
 /**
- * Serves the React Web Application or handles REST API calls
+ * Serves pure JSON REST API for GET requests (No HTML file required)
  */
 function doGet(e) {
-  // If API request with action parameter
-  if (e && e.parameter && e.parameter.action) {
-    return handleApiRequest_(e.parameter.action, e.parameter);
-  }
-
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('HR Action Tracker — Department System')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  const params = (e && e.parameter) ? e.parameter : {};
+  const action = params.action || 'getInitialData';
+  return handleApiRequest_(action, params);
 }
 
 /**
@@ -78,7 +74,15 @@ function handleApiRequest_(action, params) {
         return jsonResponse_({
           success: true,
           tasks: getTasks(),
-          dashboard: dashboardData()
+          dashboard: dashboardData(),
+          assigners: getMasterAssigners_()
+        });
+
+      case 'getMasterData':
+      case 'getAssigners':
+        return jsonResponse_({
+          success: true,
+          assigners: getMasterAssigners_()
         });
 
       case 'getTasks':
@@ -162,13 +166,22 @@ function getSheet() {
 }
 
 /**
- * Initializes Sheet Header formatting
+ * Initializes Sheet Header formatting matching user's layout:
+ * Col A: Planned / Due Date
+ * Col B: Actual
+ * Col C: S.No.
+ * Col D: Problem / Task
+ * Col E: Assign By
+ * Col F: Name Of Doer
+ * Col G: Status
+ * Col H: Weekly Review
+ * Col I: Expected Date
  */
 function initSheetHeader_(sheet) {
   const headers = [
-    ['Planned / Due Date', 'Actual', 'S.No.', 'Problem / Task', 'Name of Doer', 'Status', 'Weekly Review', 'Expected Date']
+    ['Planned / Due Date', 'Actual', 'S.No.', 'Problem / Task', 'Assign By', 'Name Of Doer', 'Status', 'Weekly Review', 'Expected Date']
   ];
-  sheet.getRange(1, 1, 1, 8).setValues(headers)
+  sheet.getRange(1, 1, 1, 9).setValues(headers)
     .setBackground('#0d1b2e')
     .setFontColor('#ffffff')
     .setFontWeight('bold')
@@ -179,11 +192,103 @@ function initSheetHeader_(sheet) {
   sheet.setColumnWidth(1, 150); // Planned / Due Date
   sheet.setColumnWidth(2, 140); // Actual
   sheet.setColumnWidth(3, 70);  // S.No.
-  sheet.setColumnWidth(4, 360); // Problem
-  sheet.setColumnWidth(5, 180); // Doer
-  sheet.setColumnWidth(6, 140); // Status
-  sheet.setColumnWidth(7, 210); // Review
-  sheet.setColumnWidth(8, 150); // Expected Date
+  sheet.setColumnWidth(4, 340); // Problem
+  sheet.setColumnWidth(5, 160); // Assign By (Col E)
+  sheet.setColumnWidth(6, 180); // Name Of Doer (Col F)
+  sheet.setColumnWidth(7, 140); // Status (Col G)
+  sheet.setColumnWidth(8, 210); // Weekly Review (Col H)
+  sheet.setColumnWidth(9, 150); // Expected Date (Col I)
+}
+
+/**
+ * Dynamically resolves column indices based on Row 1 headers
+ */
+function getColumnMap_(sheet) {
+  const map = {
+    PLANNED: COL.PLANNED,
+    ACTUAL: COL.ACTUAL,
+    SNO: COL.SNO,
+    PROBLEM: COL.PROBLEM,
+    ASSIGNED_BY: COL.ASSIGNED_BY,
+    DOER: COL.DOER,
+    STATUS: COL.STATUS,
+    REVIEW: COL.REVIEW,
+    EXPECTED: COL.EXPECTED
+  };
+  try {
+    const lastCol = sheet.getLastColumn();
+    if (lastCol < 1) return map;
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    for (let i = 0; i < headers.length; i++) {
+      const h = String(headers[i] || '').trim().toLowerCase();
+      if (h.includes('planned') || h.includes('due date')) map.PLANNED = i + 1;
+      else if (h === 'actual' || h.includes('actual completion')) map.ACTUAL = i + 1;
+      else if (h.includes('s.no') || h.includes('sno') || h.includes('sr')) map.SNO = i + 1;
+      else if (h.includes('problem') || h.includes('task')) map.PROBLEM = i + 1;
+      else if (h.includes('assign by') || h.includes('assigned by') || h.includes('task giver')) map.ASSIGNED_BY = i + 1;
+      else if (h.includes('doer') || h.includes('assignee')) map.DOER = i + 1;
+      else if (h === 'status' || h.includes('progress')) map.STATUS = i + 1;
+      else if (h.includes('review') || h.includes('rating')) map.REVIEW = i + 1;
+      else if (h.includes('expected')) map.EXPECTED = i + 1;
+    }
+  } catch(e) {}
+  return map;
+}
+
+/**
+ * Fetches the list of Assigner names from "Master" sheet Column A
+ */
+function getMasterAssigners_() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName('Master') || ss.getSheetByName('master') || ss.getSheetByName('MASTER');
+    if (!sheet) {
+      const sheets = ss.getSheets();
+      for (let s of sheets) {
+        if (s.getName().trim().toLowerCase() === 'master') {
+          sheet = s;
+          break;
+        }
+      }
+    }
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('Master');
+      sheet.getRange(1, 1, 9, 1).setValues([
+        ['Assign By (Task Assigner)'],
+        ['Management'],
+        ['Director'],
+        ['HOD'],
+        ['HR Head'],
+        ['Admin'],
+        ['MD Alaudin'],
+        ['Bhupendra'],
+        ['Deepak']
+      ]).setBackground('#0d1b2e').setFontColor('#ffffff').setFontWeight('bold');
+      sheet.getRange(2, 1, 8, 1).setBackground('#ffffff').setFontColor('#000000').setFontWeight('normal');
+      sheet.setColumnWidth(1, 220);
+      return ['Management', 'Director', 'HOD', 'HR Head', 'Admin', 'MD Alaudin', 'Bhupendra', 'Deepak'];
+    }
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 1) return ['Management', 'Director', 'HOD', 'HR Head', 'Admin', 'MD Alaudin', 'Bhupendra', 'Deepak'];
+    
+    const values = sheet.getRange(1, 1, lastRow, 1).getValues();
+    const names = [];
+    const ignoreList = ['assign by', 'assigned by', 'assigner', 'name', 'names', 's.no', 'sr no', 'sr. no.', 'sr.no.', 'task giver', 'doer', 'header'];
+    for (let i = 0; i < values.length; i++) {
+      const val = String(values[i][0] || '').trim();
+      if (val && !ignoreList.includes(val.toLowerCase())) {
+        if (!names.includes(val)) {
+          names.push(val);
+        }
+      }
+    }
+    return names.length > 0 ? names : ['Management', 'Director', 'HOD', 'HR Head', 'Admin', 'MD Alaudin', 'Bhupendra', 'Deepak'];
+  } catch (err) {
+    console.error('getMasterAssigners_ error:', err);
+    return ['Management', 'Director', 'HOD', 'HR Head', 'Admin', 'MD Alaudin', 'Bhupendra', 'Deepak'];
+  }
 }
 
 /**
@@ -192,7 +297,8 @@ function initSheetHeader_(sheet) {
 function getInitialData() {
   return {
     tasks: getTasks(),
-    dashboard: dashboardData()
+    dashboard: dashboardData(),
+    assigners: getMasterAssigners_()
   };
 }
 
@@ -207,26 +313,31 @@ function getTasks() {
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1) return [];
     
-    const maxCols = Math.max(sheet.getLastColumn(), 8);
+    const colMap = getColumnMap_(sheet);
+    const maxCols = Math.max(sheet.getLastColumn(), 9);
     const data = sheet.getRange(2, 1, lastRow - 1, maxCols).getValues();
     
     return data.map((row, index) => {
       let plannedStr = '';
-      if (row[COL.PLANNED - 1]) {
-        try { plannedStr = new Date(row[COL.PLANNED - 1]).toISOString(); }
-        catch (e) { plannedStr = String(row[COL.PLANNED - 1]); }
+      if (row[colMap.PLANNED - 1]) {
+        try { plannedStr = new Date(row[colMap.PLANNED - 1]).toISOString(); }
+        catch (e) { plannedStr = String(row[colMap.PLANNED - 1]); }
       }
       let actualStr = '';
-      if (row[COL.ACTUAL - 1]) {
-        try { actualStr = new Date(row[COL.ACTUAL - 1]).toISOString(); }
-        catch (e) { actualStr = String(row[COL.ACTUAL - 1]); }
+      if (row[colMap.ACTUAL - 1]) {
+        try { actualStr = new Date(row[colMap.ACTUAL - 1]).toISOString(); }
+        catch (e) { actualStr = String(row[colMap.ACTUAL - 1]); }
       }
       let expectedStr = '';
-      if (row[COL.EXPECTED - 1]) {
-        try { expectedStr = new Date(row[COL.EXPECTED - 1]).toISOString(); }
-        catch (e) { expectedStr = String(row[COL.EXPECTED - 1]); }
+      if (colMap.EXPECTED && row[colMap.EXPECTED - 1]) {
+        try { expectedStr = new Date(row[colMap.EXPECTED - 1]).toISOString(); }
+        catch (e) { expectedStr = String(row[colMap.EXPECTED - 1]); }
       } else {
         expectedStr = plannedStr;
+      }
+      let assignedByStr = '';
+      if (colMap.ASSIGNED_BY && row[colMap.ASSIGNED_BY - 1]) {
+        assignedByStr = String(row[colMap.ASSIGNED_BY - 1] || '');
       }
       
       return {
@@ -234,11 +345,12 @@ function getTasks() {
         planned: plannedStr,
         expectedDate: expectedStr,
         actual: actualStr,
-        sno: Number(row[COL.SNO - 1]) || (index + 1),
-        problem: String(row[COL.PROBLEM - 1] || ''),
-        doer: String(row[COL.DOER - 1] || ''),
-        status: String(row[COL.STATUS - 1] || 'Pending'),
-        review: String(row[COL.REVIEW - 1] || '')
+        sno: Number(row[colMap.SNO - 1]) || (index + 1),
+        problem: String(row[colMap.PROBLEM - 1] || ''),
+        assignedBy: assignedByStr,
+        doer: String(row[colMap.DOER - 1] || ''),
+        status: String(row[colMap.STATUS - 1] || 'Pending'),
+        review: String(row[colMap.REVIEW - 1] || '')
       };
     }).reverse(); // Latest tasks first
   } catch (err) {
@@ -254,10 +366,11 @@ function addTask(task) {
   const sheet = getSheet();
   if (!sheet) throw new Error("Sheet not found");
   
+  const colMap = getColumnMap_(sheet);
   const lastRow = sheet.getLastRow();
   let nextSno = 1;
   if (lastRow > 1) {
-    const lastVal = sheet.getRange(lastRow, COL.SNO).getValue();
+    const lastVal = sheet.getRange(lastRow, colMap.SNO).getValue();
     nextSno = (Number(lastVal) || (lastRow - 1)) + 1;
   }
   
@@ -275,22 +388,26 @@ function addTask(task) {
       if (!isNaN(parsed.getTime())) expectedDate = parsed;
     } catch(e) {}
   }
-  const newRow = [
-    plannedDate,
-    '',
-    nextSno,
-    task.problem || '',
-    task.doer || '',
-    task.status || 'Pending',
-    '',
-    expectedDate
-  ];
+  const assignedBy = task.assignedBy || '';
   
-  sheet.appendRow(newRow);
+  const maxCol = Math.max(sheet.getLastColumn(), 9);
+  const rowData = new Array(maxCol).fill('');
+  rowData[colMap.PLANNED - 1] = plannedDate;
+  rowData[colMap.ACTUAL - 1] = '';
+  rowData[colMap.SNO - 1] = nextSno;
+  rowData[colMap.PROBLEM - 1] = task.problem || '';
+  if (colMap.ASSIGNED_BY) rowData[colMap.ASSIGNED_BY - 1] = assignedBy;
+  if (colMap.DOER) rowData[colMap.DOER - 1] = task.doer || '';
+  if (colMap.STATUS) rowData[colMap.STATUS - 1] = task.status || 'Pending';
+  if (colMap.REVIEW) rowData[colMap.REVIEW - 1] = '';
+  if (colMap.EXPECTED) rowData[colMap.EXPECTED - 1] = expectedDate;
+  
+  sheet.appendRow(rowData);
   
   // Log creation audit
   logAuditEntry_(nextSno, task.problem || '', task.doer || '', 'CREATED', [
     { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: task.problem || '' },
+    { field: 'assignedBy', fieldLabel: 'Assign By', oldValue: '—', newValue: assignedBy || '—' },
     { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: task.doer || 'Unassigned' },
     { field: 'expectedDate', fieldLabel: 'Expected Date & Time', oldValue: '—', newValue: expectedDate.toISOString() },
     { field: 'planned', fieldLabel: 'Due Date & Time', oldValue: '—', newValue: plannedDate.toISOString() },
@@ -310,34 +427,39 @@ function updateTask(task) {
   const sheet = getSheet();
   if (!sheet) throw new Error("Sheet not found");
   
+  const colMap = getColumnMap_(sheet);
   const rowIndex = findRowIndexBySno(task.sno, sheet);
   if (rowIndex === -1) throw new Error("Task not found");
   
-  const oldPlanned = sheet.getRange(rowIndex, COL.PLANNED).getValue();
-  const oldExpected = sheet.getLastColumn() >= COL.EXPECTED ? sheet.getRange(rowIndex, COL.EXPECTED).getValue() : null;
-  const oldProblem = sheet.getRange(rowIndex, COL.PROBLEM).getValue();
-  const oldDoer = sheet.getRange(rowIndex, COL.DOER).getValue();
-  const oldStatus = sheet.getRange(rowIndex, COL.STATUS).getValue();
+  const oldPlanned = sheet.getRange(rowIndex, colMap.PLANNED).getValue();
+  const oldExpected = colMap.EXPECTED ? sheet.getRange(rowIndex, colMap.EXPECTED).getValue() : null;
+  const oldAssignedBy = colMap.ASSIGNED_BY ? sheet.getRange(rowIndex, colMap.ASSIGNED_BY).getValue() : '';
+  const oldProblem = sheet.getRange(rowIndex, colMap.PROBLEM).getValue();
+  const oldDoer = sheet.getRange(rowIndex, colMap.DOER).getValue();
+  const oldStatus = sheet.getRange(rowIndex, colMap.STATUS).getValue();
   
   if (task.planned) {
     try {
       const parsed = new Date(task.planned);
       if (!isNaN(parsed.getTime())) {
-        sheet.getRange(rowIndex, COL.PLANNED).setValue(parsed);
+        sheet.getRange(rowIndex, colMap.PLANNED).setValue(parsed);
       }
     } catch(e) {}
   }
-  if (task.expectedDate) {
+  if (task.expectedDate && colMap.EXPECTED) {
     try {
       const parsed = new Date(task.expectedDate);
       if (!isNaN(parsed.getTime())) {
-        sheet.getRange(rowIndex, COL.EXPECTED).setValue(parsed);
+        sheet.getRange(rowIndex, colMap.EXPECTED).setValue(parsed);
       }
     } catch(e) {}
   }
-  sheet.getRange(rowIndex, COL.PROBLEM).setValue(task.problem || '');
-  sheet.getRange(rowIndex, COL.DOER).setValue(task.doer || '');
-  sheet.getRange(rowIndex, COL.STATUS).setValue(task.status || 'Pending');
+  if (task.assignedBy !== undefined && colMap.ASSIGNED_BY) {
+    sheet.getRange(rowIndex, colMap.ASSIGNED_BY).setValue(task.assignedBy || '');
+  }
+  sheet.getRange(rowIndex, colMap.PROBLEM).setValue(task.problem || '');
+  sheet.getRange(rowIndex, colMap.DOER).setValue(task.doer || '');
+  sheet.getRange(rowIndex, colMap.STATUS).setValue(task.status || 'Pending');
   
   if (oldStatus !== 'Complete 100%' && task.status === 'Complete 100%') {
     handleActualTimestamp_(sheet, rowIndex, true);
@@ -348,6 +470,9 @@ function updateTask(task) {
   }
   
   const changes = [];
+  if (task.assignedBy !== undefined && String(oldAssignedBy || '') !== String(task.assignedBy || '')) {
+    changes.push({ field: 'assignedBy', fieldLabel: 'Assign By', oldValue: String(oldAssignedBy || '—'), newValue: String(task.assignedBy || '—') });
+  }
   if (task.expectedDate && String(oldExpected) !== String(task.expectedDate)) {
     changes.push({ field: 'expectedDate', fieldLabel: 'Expected Date & Time', oldValue: String(oldExpected || '—'), newValue: String(task.expectedDate) });
   }
@@ -372,14 +497,15 @@ function updateStatus(sno, status) {
   const sheet = getSheet();
   if (!sheet) throw new Error("Sheet not found");
   
+  const colMap = getColumnMap_(sheet);
   const rowIndex = findRowIndexBySno(sno, sheet);
   if (rowIndex === -1) throw new Error("Task not found");
   
-  const oldStatus = sheet.getRange(rowIndex, COL.STATUS).getValue();
-  const problem = sheet.getRange(rowIndex, COL.PROBLEM).getValue();
-  const doer = sheet.getRange(rowIndex, COL.DOER).getValue();
+  const oldStatus = sheet.getRange(rowIndex, colMap.STATUS).getValue();
+  const problem = sheet.getRange(rowIndex, colMap.PROBLEM).getValue();
+  const doer = sheet.getRange(rowIndex, colMap.DOER).getValue();
   
-  sheet.getRange(rowIndex, COL.STATUS).setValue(status);
+  sheet.getRange(rowIndex, colMap.STATUS).setValue(status);
   
   if (oldStatus !== 'Complete 100%' && status === 'Complete 100%') {
     handleActualTimestamp_(sheet, rowIndex, true);
@@ -401,11 +527,12 @@ function deleteTask(sno) {
   const sheet = getSheet();
   if (!sheet) throw new Error("Sheet not found");
   
+  const colMap = getColumnMap_(sheet);
   const rowIndex = findRowIndexBySno(sno, sheet);
   if (rowIndex === -1) throw new Error("Task not found");
   
-  const problem = sheet.getRange(rowIndex, COL.PROBLEM).getValue();
-  const doer = sheet.getRange(rowIndex, COL.DOER).getValue();
+  const problem = sheet.getRange(rowIndex, colMap.PROBLEM).getValue();
+  const doer = sheet.getRange(rowIndex, colMap.DOER).getValue();
   
   sheet.deleteRow(rowIndex);
   
@@ -492,7 +619,8 @@ function dashboardData() {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return { total: 0, pending: 0, prog25: 0, prog50: 0, prog75: 0, completed: 0 };
   
-  const statuses = sheet.getRange(2, COL.STATUS, lastRow - 1, 1).getValues();
+  const colMap = getColumnMap_(sheet);
+  const statuses = sheet.getRange(2, colMap.STATUS, lastRow - 1, 1).getValues();
   
   let total = 0, pending = 0, prog25 = 0, prog50 = 0, prog75 = 0, completed = 0;
   
@@ -518,7 +646,8 @@ function findRowIndexBySno(sno, sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return -1;
   
-  const snoValues = sheet.getRange(2, COL.SNO, lastRow - 1, 1).getValues();
+  const colMap = getColumnMap_(sheet);
+  const snoValues = sheet.getRange(2, colMap.SNO, lastRow - 1, 1).getValues();
   for (let i = 0; i < snoValues.length; i++) {
     if (Number(snoValues[i][0]) === Number(sno)) {
       return i + 2;
@@ -538,15 +667,16 @@ function handleSheetEdit(e) {
   const row = e.range.getRow();
   if (row <= 1) return;
   
+  const colMap = getColumnMap_(sheet);
   const col = e.range.getColumn();
   const newValue = e.value !== undefined ? e.value : e.range.getValue();
   const oldValue = e.oldValue !== undefined ? e.oldValue : '';
-  const sno = sheet.getRange(row, COL.SNO).getValue();
-  const problem = sheet.getRange(row, COL.PROBLEM).getValue();
-  const doer = sheet.getRange(row, COL.DOER).getValue();
+  const sno = sheet.getRange(row, colMap.SNO).getValue();
+  const problem = sheet.getRange(row, colMap.PROBLEM).getValue();
+  const doer = sheet.getRange(row, colMap.DOER).getValue();
   
   // Status column edited
-  if (col === COL.STATUS) {
+  if (col === colMap.STATUS) {
     if (newValue === 'Complete 100%') {
       handleActualTimestamp_(sheet, row, true);
     } else if (oldValue === 'Complete 100%' && newValue !== 'Complete 100%') {
@@ -555,11 +685,11 @@ function handleSheetEdit(e) {
     logAuditEntry_(sno, String(problem), String(doer), 'STATUS_CHANGED', [
       { field: 'status', fieldLabel: 'Status', oldValue: String(oldValue || '—'), newValue: String(newValue) }
     ]);
-  } else if (col === COL.PROBLEM) {
+  } else if (col === colMap.PROBLEM) {
     logAuditEntry_(sno, String(newValue), String(doer), 'EDITED', [
       { field: 'problem', fieldLabel: 'Problem Statement', oldValue: String(oldValue || '—'), newValue: String(newValue) }
     ]);
-  } else if (col === COL.DOER) {
+  } else if (col === colMap.DOER) {
     logAuditEntry_(sno, String(problem), String(newValue), 'EDITED', [
       { field: 'doer', fieldLabel: 'Name of Doer(s)', oldValue: String(oldValue || 'Unassigned'), newValue: String(newValue) }
     ]);
@@ -570,13 +700,14 @@ function handleSheetEdit(e) {
  * Handles Actual Completion Date and Weekly Review calculation
  */
 function handleActualTimestamp_(sheet, rowIndex, isComplete) {
+  const colMap = getColumnMap_(sheet);
   if (isComplete) {
     const actualDate = new Date();
-    sheet.getRange(rowIndex, COL.ACTUAL).setValue(actualDate);
+    sheet.getRange(rowIndex, colMap.ACTUAL).setValue(actualDate);
     computeWeeklyReview_(sheet, rowIndex);
   } else {
-    sheet.getRange(rowIndex, COL.ACTUAL).clearContent();
-    sheet.getRange(rowIndex, COL.REVIEW).clearContent();
+    sheet.getRange(rowIndex, colMap.ACTUAL).clearContent();
+    sheet.getRange(rowIndex, colMap.REVIEW).clearContent();
   }
 }
 
@@ -584,11 +715,12 @@ function handleActualTimestamp_(sheet, rowIndex, isComplete) {
  * Evaluates SLA Turnaround Time and sets Star Rating
  */
 function computeWeeklyReview_(sheet, rowIndex) {
-  const planned = sheet.getRange(rowIndex, COL.PLANNED).getValue();
-  const actual = sheet.getRange(rowIndex, COL.ACTUAL).getValue();
+  const colMap = getColumnMap_(sheet);
+  const planned = sheet.getRange(rowIndex, colMap.PLANNED).getValue();
+  const actual = sheet.getRange(rowIndex, colMap.ACTUAL).getValue();
   let expected = null;
-  if (sheet.getLastColumn() >= COL.EXPECTED) {
-    expected = sheet.getRange(rowIndex, COL.EXPECTED).getValue();
+  if (colMap.EXPECTED && sheet.getLastColumn() >= colMap.EXPECTED) {
+    expected = sheet.getRange(rowIndex, colMap.EXPECTED).getValue();
   }
   
   if (!actual) return;
@@ -601,19 +733,19 @@ function computeWeeklyReview_(sheet, rowIndex) {
   
   // 1. If completed on or before Assigner's Expected Date
   if (eDate && !isNaN(eDate.getTime()) && aDate.getTime() <= eDate.getTime()) {
-    sheet.getRange(rowIndex, COL.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Expected Time)');
+    sheet.getRange(rowIndex, colMap.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Expected Time)');
     return;
   }
   
   // 2. If completed on or before Committed Due Date
   if (pDate && !isNaN(pDate.getTime()) && aDate.getTime() <= pDate.getTime()) {
-    sheet.getRange(rowIndex, COL.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Time)');
+    sheet.getRange(rowIndex, colMap.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Time)');
     return;
   }
   
   const refDate = (pDate && !isNaN(pDate.getTime())) ? pDate : eDate;
   if (!refDate || isNaN(refDate.getTime())) {
-    sheet.getRange(rowIndex, COL.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Time)');
+    sheet.getRange(rowIndex, colMap.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Time)');
     return;
   }
   
@@ -630,7 +762,7 @@ function computeWeeklyReview_(sheet, rowIndex) {
     review = '⭐ Poor (Overdue)';
   }
   
-  sheet.getRange(rowIndex, COL.REVIEW).setValue(review);
+  sheet.getRange(rowIndex, colMap.REVIEW).setValue(review);
 }
 
 /**

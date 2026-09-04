@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import {
   Database, Bell, Shield, CheckCircle2, Lock, FileSpreadsheet,
   Server, Users, UserPlus, Trash2, Key, Eye, EyeOff, ShieldCheck,
-  AlertTriangle, Edit2, X, Save, Loader2, Globe, RefreshCw, Check, Link, ExternalLink
+  AlertTriangle, Edit2, X, Save, Loader2, Globe, RefreshCw, Check, Link, ExternalLink,
+  Sparkles, Calendar, Clock, Star, HelpCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import type { User, UserRole } from '../types/auth';
@@ -18,13 +19,15 @@ const cardStyle: React.CSSProperties = {
 };
 
 const COLS = [
-  { col: 'A', name: 'Planned', desc: 'Creation / Planned timestamp' },
+  { col: 'A', name: 'Planned / Due Date', desc: 'Committed deadline date & time' },
   { col: 'B', name: 'Actual', desc: 'Completion timestamp (auto on 100%)' },
   { col: 'C', name: 'S.No.', desc: 'Unique sequential identifier' },
   { col: 'D', name: 'Problem / Task', desc: 'Task description / problem statement' },
   { col: 'E', name: 'Name of Doer', desc: 'Comma-separated HR assignees' },
   { col: 'F', name: 'Status', desc: 'Pending, 25%, 50%, 75%, 100%' },
   { col: 'G', name: 'Weekly Review', desc: 'Auto SLA rating (⭐⭐⭐⭐⭐ - ⭐)' },
+  { col: 'H', name: 'Expected Date', desc: 'Task Assigner target goal date & time' },
+  { col: 'I', name: 'Assign By', desc: 'Task Assigner / Giver (from Master Sheet Col A)' },
 ];
 
 export const Settings: React.FC = () => {
@@ -196,120 +199,6 @@ export const Settings: React.FC = () => {
         </p>
       </div>
 
-      {/* ── Audit History Deletion Controls ─────────────────────────────── */}
-      {isAdmin && (
-        <div style={cardStyle}>
-          <div
-            style={{
-              padding: '16px 22px',
-              borderBottom: '1px solid #e8ecf0',
-              background: '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 10,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: allowHistoryDeletion ? '#fef2f2' : '#f1f5f9',
-                  border: `1px solid ${allowHistoryDeletion ? '#fecaca' : '#e2e8f0'}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: allowHistoryDeletion ? '#dc2626' : '#64748b',
-                }}
-              >
-                <Trash2 size={16} />
-              </div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
-                  Audit History Deletion Controls
-                </div>
-                <div style={{ fontSize: 11, color: '#64748b' }}>
-                  Enable or hide the Delete action column on the Task Modifications & Audit History page
-                </div>
-              </div>
-            </div>
-
-            <span
-              style={{
-                padding: '4px 10px',
-                borderRadius: 99,
-                fontSize: 11,
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-                background: allowHistoryDeletion ? '#fef2f2' : '#f1f5f9',
-                color: allowHistoryDeletion ? '#dc2626' : '#64748b',
-                border: `1px solid ${allowHistoryDeletion ? '#fecaca' : '#cbd5e1'}`,
-              }}
-            >
-              {allowHistoryDeletion ? 'Delete Action Active' : 'Protected / Hidden'}
-            </span>
-          </div>
-
-          <div style={{ padding: 22 }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '16px 18px',
-                background: allowHistoryDeletion ? '#fff5f5' : '#f8fafc',
-                border: `1px solid ${allowHistoryDeletion ? '#fed7d7' : '#e2e8f0'}`,
-                borderRadius: 12,
-                gap: 16,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
-                  Show Delete Action Column in History Table
-                </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.4 }}>
-                  Turn this <b>ON</b> to display an <b>Action</b> column with <b>Delete (🗑️)</b> buttons in the History table so old modification records can be removed. Turn <b>OFF</b> to protect audit trails.
-                </div>
-              </div>
-
-              {/* Modern Switch Button */}
-              <button
-                type="button"
-                onClick={handleToggleHistoryDeletion}
-                style={{
-                  position: 'relative',
-                  width: 52,
-                  height: 30,
-                  borderRadius: 99,
-                  backgroundColor: allowHistoryDeletion ? '#dc2626' : '#cbd5e1',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                  flexShrink: 0,
-                  padding: 3,
-                  outline: 'none',
-                }}
-              >
-                <div
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: '50%',
-                    backgroundColor: '#ffffff',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
-                    transform: allowHistoryDeletion ? 'translateX(22px)' : 'translateX(0px)',
-                    transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                  }}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Administration & User Management ─────────────────────────────── */}
       <div style={cardStyle}>
         <div style={{ padding: '16px 22px', borderBottom: '1px solid #e8ecf0', background: 'linear-gradient(135deg, #0d1b2e, #1a2e52)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
@@ -318,7 +207,7 @@ export const Settings: React.FC = () => {
               <Users size={16} color="#ffffff" />
             </div>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>Administration & User Credentials</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#ffffff' }}>Administration &amp; User Credentials</div>
               <div style={{ fontSize: 11, color: '#94a3b8' }}>Manage system accounts, roles, and login passwords</div>
             </div>
           </div>
@@ -359,7 +248,7 @@ export const Settings: React.FC = () => {
             <ShieldCheck size={18} color="#2563eb" style={{ flexShrink: 0, marginTop: 1 }} />
             <div>
               <b>Administration Controls:</b><br />
-              • Only Administrator accounts have access to this Settings & Administration section.<br />
+              • Only Administrator accounts have access to this Settings &amp; Administration section.<br />
               • You can create new accounts, edit usernames, update passwords, and manage roles anytime below.
             </div>
           </div>
@@ -654,6 +543,214 @@ export const Settings: React.FC = () => {
 
         </div>
       </div>
+
+      {/* ── HOW THIS SYSTEM WORKS & SLA EVALUATION GUIDE ── */}
+      <div style={cardStyle}>
+        <div style={{ padding: '16px 22px', borderBottom: '1px solid #e8ecf0', background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 100%)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: '#ecfdf5', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#047857' }}>
+              <Sparkles size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>How This System Works &amp; SLA Guide</div>
+              <div style={{ fontSize: 12, color: '#64748b' }}>Workflow rules, dual-deadline tracking &amp; Weekly Review auto-rating logic</div>
+            </div>
+          </div>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#047857', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '4px 10px', borderRadius: 99 }}>
+            System Architecture
+          </span>
+        </div>
+
+        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Dual-Deadline & Workflow Columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+            {/* 1. Expected vs Due Date */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: '#166534', fontSize: 13, fontWeight: 700 }}>
+                <Calendar size={16} color="#16a34a" /> 1. Dual-Deadline Tracking Mechanism
+              </div>
+              <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div>
+                  <strong style={{ color: '#166534' }}>• Expected Target Date &amp; Time (Assigner Goal):</strong> Task assign karne wale (Manager/Admin) ke according ideal completion time. Agar task is time ke andar complete hota hai to highest <b>⭐⭐⭐⭐⭐ Excellent (On Expected Time)</b> rating milti hai.
+                </div>
+                <div>
+                  <strong style={{ color: '#047857' }}>• Committed Due Date &amp; Time (Final Deadline):</strong> Assigned HR person ke dwara commit ki gayi final deadline. Iske andar complete karne par <b>⭐⭐⭐⭐⭐ Excellent (On Time)</b> rating milti hai.
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Live Progress Workflow */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, color: '#2563eb', fontSize: 13, fontWeight: 700 }}>
+                <CheckCircle2 size={16} color="#2563eb" /> 2. Table-Operated Live Workflow
+              </div>
+              <div style={{ fontSize: 12, color: '#334155', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div>
+                  <strong>• Default State:</strong> Task create hote hi initial status <b>Pending</b> set hota hai.
+                </div>
+                <div>
+                  <strong>• Real-time Update:</strong> Assigned doer direct Tasks table dropdown se live progress (<b>25%</b>, <b>50%</b>, <b>75%</b>, <b>100%</b>) update kar sakte hain.
+                </div>
+                <div>
+                  <strong>• Auto Timestamp:</strong> <b>Complete 100%</b> hote hi Actual Completion Time record hota hai aur Weekly Review rating auto-calculate ho jati hai.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Weekly Review Star Rating Rules Matrix */}
+          <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: 14, padding: '16px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 800, color: '#854d0e', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              <Star size={16} color="#eab308" /> Weekly Review Performance Star Rating Rules
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+              <div style={{ background: '#ffffff', border: '1px solid #fde047', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#15803d' }}>⭐⭐⭐⭐⭐ Excellent (On Expected Time)</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Completed on or before Assigner's Expected Target Date &amp; Time.</div>
+              </div>
+
+              <div style={{ background: '#ffffff', border: '1px solid #fde047', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#047857' }}>⭐⭐⭐⭐⭐ Excellent (On Time)</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Completed past Expected Target, but on or before Committed Due Date &amp; Time.</div>
+              </div>
+
+              <div style={{ background: '#ffffff', border: '1px solid #fde047', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#2563eb' }}>⭐⭐⭐⭐ Very Good (Minor Delay)</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Delayed by ≤ 1 day past the Committed Due Date.</div>
+              </div>
+
+              <div style={{ background: '#ffffff', border: '1px solid #fde047', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#b45309' }}>⭐⭐⭐ Good (Delayed)</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Delayed by ≤ 3 days past the Committed Due Date.</div>
+              </div>
+
+              <div style={{ background: '#ffffff', border: '1px solid #fde047', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#c2410c' }}>⭐⭐ Needs Improvement (Late)</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Delayed by ≤ 7 days past the Committed Due Date.</div>
+              </div>
+
+              <div style={{ background: '#ffffff', border: '1px solid #fde047', borderRadius: 10, padding: '10px 14px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#dc2626' }}>⭐ Poor (Overdue)</div>
+                <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>Delayed by &gt; 7 days past the Committed Due Date.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Audit History Deletion Controls ─────────────────────────────── */}
+      {isAdmin && (
+        <div style={cardStyle}>
+          <div
+            style={{
+              padding: '16px 22px',
+              borderBottom: '1px solid #e8ecf0',
+              background: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: allowHistoryDeletion ? '#fef2f2' : '#f1f5f9',
+                  border: `1px solid ${allowHistoryDeletion ? '#fecaca' : '#e2e8f0'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: allowHistoryDeletion ? '#dc2626' : '#64748b',
+                }}
+              >
+                <Trash2 size={16} />
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                  Audit History Deletion Controls
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>
+                  Enable or hide the Delete action column on the Task Modifications &amp; Audit History page
+                </div>
+              </div>
+            </div>
+
+            <span
+              style={{
+                padding: '4px 10px',
+                borderRadius: 99,
+                fontSize: 11,
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em',
+                background: allowHistoryDeletion ? '#fef2f2' : '#f1f5f9',
+                color: allowHistoryDeletion ? '#dc2626' : '#64748b',
+                border: `1px solid ${allowHistoryDeletion ? '#fecaca' : '#cbd5e1'}`,
+              }}
+            >
+              {allowHistoryDeletion ? 'Delete Action Active' : 'Protected / Hidden'}
+            </span>
+          </div>
+
+          <div style={{ padding: 22 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px 18px',
+                background: allowHistoryDeletion ? '#fff5f5' : '#f8fafc',
+                border: `1px solid ${allowHistoryDeletion ? '#fed7d7' : '#e2e8f0'}`,
+                borderRadius: 12,
+                gap: 16,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                  Show Delete Action Column in History Table
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, lineHeight: 1.4 }}>
+                  Turn this <b>ON</b> to display an <b>Action</b> column with <b>Delete (🗑️)</b> buttons in the History table so old modification records can be removed. Turn <b>OFF</b> to protect audit trails.
+                </div>
+              </div>
+
+              {/* Modern Switch Button */}
+              <button
+                type="button"
+                onClick={handleToggleHistoryDeletion}
+                style={{
+                  position: 'relative',
+                  width: 52,
+                  height: 30,
+                  borderRadius: 99,
+                  backgroundColor: allowHistoryDeletion ? '#dc2626' : '#cbd5e1',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  flexShrink: 0,
+                  padding: 3,
+                  outline: 'none',
+                }}
+              >
+                <div
+                  style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: '50%',
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
+                    transform: allowHistoryDeletion ? 'translateX(22px)' : 'translateX(0px)',
+                    transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Edit User Modal ────────────────────────────── */}
       {editingUser && (
@@ -982,274 +1079,6 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Google Apps Script Web App API Live Connection */}
-      <div style={cardStyle}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid #e8ecf0', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: '#eff6ff', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-              <Globe size={17} />
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Google Apps Script Web App API URL</div>
-              <div style={{ fontSize: 11, color: '#64748b' }}>Connect standalone React app to Live Google Sheet backend</div>
-            </div>
-          </div>
-          <span
-            style={{
-              padding: '4px 10px',
-              borderRadius: 99,
-              fontSize: 11,
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              background: gasApiUrl ? '#ecfdf5' : '#f1f5f9',
-              color: gasApiUrl ? '#059669' : '#64748b',
-              border: `1px solid ${gasApiUrl ? '#a7f3d0' : '#cbd5e1'}`,
-            }}
-          >
-            {gasApiUrl ? 'API Configured' : 'Local Mock Mode'}
-          </span>
-        </div>
-
-        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-              Web App Exec URL (from Apps Script Deployment)
-            </label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input
-                type="url"
-                value={gasApiUrl}
-                onChange={e => setGasApiUrlState(e.target.value)}
-                placeholder="https://script.google.com/macros/s/AKfycbx.../exec"
-                style={{
-                  flex: 1,
-                  minWidth: 260,
-                  padding: '10px 14px',
-                  borderRadius: 8,
-                  border: '1px solid #cbd5e1',
-                  fontSize: 13,
-                  fontFamily: 'monospace',
-                  outline: 'none',
-                }}
-              />
-              <button
-                type="button"
-                onClick={handleSaveGasUrl}
-                style={{
-                  padding: '10px 18px',
-                  borderRadius: 8,
-                  background: '#2563eb',
-                  color: '#ffffff',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Save size={15} />
-                Save URL
-              </button>
-              <button
-                type="button"
-                onClick={handleTestConnection}
-                disabled={isTestingGas || !gasApiUrl.trim()}
-                style={{
-                  padding: '10px 18px',
-                  borderRadius: 8,
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  border: 'none',
-                  cursor: isTestingGas || !gasApiUrl.trim() ? 'not-allowed' : 'pointer',
-                  opacity: isTestingGas || !gasApiUrl.trim() ? 0.6 : 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                {isTestingGas ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
-                Test Connection
-              </button>
-            </div>
-            <p style={{ fontSize: 12, color: '#64748b', margin: '8px 0 0', lineHeight: 1.4 }}>
-              Tip: Apps Script editor me <b>Deploy &gt; New deployment &gt; Web app &gt; Execute as: Me &gt; Who has access: Anyone</b> select karke URL copy karein.
-            </p>
-          </div>
-
-          {testResult && (
-            <div
-              style={{
-                padding: '12px 16px',
-                borderRadius: 10,
-                background: testResult.success ? '#ecfdf5' : '#fef2f2',
-                border: `1px solid ${testResult.success ? '#a7f3d0' : '#fecaca'}`,
-                color: testResult.success ? '#065f46' : '#991b1b',
-                fontSize: 13,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              {testResult.success ? <Check size={18} color="#059669" /> : <AlertTriangle size={18} color="#dc2626" />}
-              <div>
-                <b>{testResult.success ? 'Connection Successful!' : 'Connection Failed:'}</b> {testResult.message}
-                {testResult.sheetName && <span style={{ marginLeft: 6, opacity: 0.8 }}>({testResult.sheetName})</span>}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Google Sheet Tab & Schema */}
-      <div style={cardStyle}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid #e8ecf0', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <FileSpreadsheet size={18} color="#059669" />
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Google Sheet Backend Configuration</div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>Connected Google Apps Script tab model</div>
-          </div>
-        </div>
-
-        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-              Required Tab Name
-            </label>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 14px',
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: 10,
-                color: '#1e40af',
-                fontSize: 13,
-                fontWeight: 700,
-                fontFamily: 'monospace',
-              }}
-            >
-              Action Tracker HR Department
-            </div>
-            <p style={{ fontSize: 11, color: '#94a3b8', margin: '6px 0 0' }}>
-              The Google Apps Script code directly reads and updates this exact tab in your Google Spreadsheet.
-            </p>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-              Standard 7-Column Data Architecture
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
-              {COLS.map(({ col, name, desc }) => (
-                <div
-                  key={col}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 10,
-                    padding: '10px 12px',
-                    background: '#f8fafc',
-                    border: '1px solid #e8ecf0',
-                    borderRadius: 10,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      background: '#2563eb',
-                      color: '#ffffff',
-                      fontSize: 10,
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      marginTop: 1,
-                    }}
-                  >
-                    {col}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{name}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Telegram Notification Info */}
-      <div style={cardStyle}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid #e8ecf0', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Bell size={18} color="#d97706" />
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Telegram Notification Engine</div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>Automated HR alert dispatch</div>
-          </div>
-        </div>
-
-        <div style={{ padding: 22 }}>
-          <div
-            style={{
-              padding: 16,
-              background: '#fffbeb',
-              border: '1px solid #fde68a',
-              borderRadius: 12,
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 12,
-            }}
-          >
-            <Server size={18} color="#b45309" style={{ flexShrink: 0, marginTop: 2 }} />
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e' }}>
-                Executed Server-Side on Google Apps Script
-              </div>
-              <div style={{ fontSize: 12, color: '#a16207', marginTop: 4, lineHeight: 1.5 }}>
-                Telegram Bot Token and Chat IDs remain strictly protected inside your <code>Code.gs</code> backend script. No tokens or private webhook endpoints are stored in frontend code.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Security Posture */}
-      <div style={cardStyle}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid #e8ecf0', background: '#f8fafc', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Shield size={18} color="#2563eb" />
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Security & Integrity Assurance</div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>Enterprise compliance rules</div>
-          </div>
-        </div>
-
-        <div style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[
-            'Restricted Administration: Settings and user credentials are encrypted and visible solely to Admin.',
-            'Role-based task isolation: Doers only see and operate their assigned action items.',
-            'Purged legacy fields: "Backend" and "System Name" are 100% eliminated from all schemas.',
-            '2.5-Day SLA automatic TAT evaluation on task completion.',
-            'Automated 60-second periodic background synchronization.',
-          ].map((text, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <CheckCircle2 size={16} color="#10b981" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: '#334155', fontWeight: 500 }}>{text}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
       <style>{`
         @keyframes scaleUp {

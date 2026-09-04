@@ -11,6 +11,7 @@ export interface Task {
   review: string;
   dueDate?: string; // Optional alias for planned due date & time
   expectedDate?: string; // ISO date-time string for Assigner Target Expected Date & Time
+  assignedBy?: string; // Name of person who assigned the task (from Master Sheet Col A)
 }
 
 export interface DashboardData {

@@ -84,19 +84,23 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 2,
     sno: 1,
     planned: new Date(Date.now() - 6 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 6.5 * 86400000).toISOString(),
     actual: new Date(Date.now() - 4 * 86400000).toISOString(),
     problem: 'Process Monthly Attendance and Leave Reconciliation for Production Unit',
     doer: 'Bhupendra',
+    assignedBy: 'Management',
     status: 'Complete 100%',
-    review: '⭐⭐⭐⭐⭐ Excellent',
+    review: '⭐⭐⭐⭐⭐ Excellent (On Time)',
   },
   {
     rowIndex: 3,
     sno: 2,
     planned: new Date(Date.now() - 5 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 5.5 * 86400000).toISOString(),
     actual: '',
     problem: 'Conduct Background Verification for 12 newly joined Warehouse Associates',
     doer: 'Deepak',
+    assignedBy: 'HR Head',
     status: 'Progress 75%',
     review: '',
   },
@@ -104,9 +108,11 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 4,
     sno: 3,
     planned: new Date(Date.now() - 4 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 4.5 * 86400000).toISOString(),
     actual: '',
     problem: 'Coordinate Annual Statutory Compliance Audit with external auditor',
     doer: 'MD Alaudin',
+    assignedBy: 'Director',
     status: 'Progress 50%',
     review: '',
   },
@@ -114,9 +120,11 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 5,
     sno: 4,
     planned: new Date(Date.now() - 3 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 3.5 * 86400000).toISOString(),
     actual: '',
     problem: 'Prepare Employee ESIC & PF monthly remittance challan report',
     doer: 'Deepak',
+    assignedBy: 'Admin',
     status: 'Pending',
     review: '',
   },
@@ -124,9 +132,11 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 6,
     sno: 5,
     planned: new Date(Date.now() - 2 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 2.5 * 86400000).toISOString(),
     actual: '',
     problem: 'Schedule Second Round Technical Interviews for Senior DevOps Engineer position',
     doer: 'Bhupendra, Deepak',
+    assignedBy: 'HOD',
     status: 'Progress 25%',
     review: '',
   },
@@ -508,6 +518,7 @@ export const taskService = {
 
     const planned = task.planned || task.dueDate || new Date(Date.now() + 2.5 * 86400000).toISOString();
     const expectedDate = task.expectedDate || planned;
+    const assignedBy = task.assignedBy || 'Management';
     const newTask: Task = {
       rowIndex: mockTasks.length + 2,
       sno: nextSno,
@@ -516,6 +527,7 @@ export const taskService = {
       actual: '',
       problem: task.problem || '',
       doer: task.doer || '',
+      assignedBy,
       status: task.status || 'Pending',
       review: '',
     };
@@ -530,6 +542,7 @@ export const taskService = {
     logAudit(nextSno, newTask.problem, newTask.doer, 'CREATED', [
       { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: newTask.problem },
       { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: newTask.doer || 'Unassigned' },
+      { field: 'assignedBy', fieldLabel: 'Assigned By', oldValue: '—', newValue: assignedBy },
       { field: 'expectedDate', fieldLabel: 'Expected Date & Time', oldValue: '—', newValue: expectedDate },
       { field: 'planned', fieldLabel: 'Due Date & Time', oldValue: '—', newValue: planned },
       { field: 'status', fieldLabel: 'Initial Status', oldValue: '—', newValue: newTask.status },
@@ -558,6 +571,14 @@ export const taskService = {
           fieldLabel: 'Name of Doer(s)',
           oldValue: old.doer || 'Unassigned',
           newValue: task.doer || 'Unassigned',
+        });
+      }
+      if (task.assignedBy !== undefined && old.assignedBy !== task.assignedBy) {
+        changes.push({
+          field: 'assignedBy',
+          fieldLabel: 'Assigned By',
+          oldValue: old.assignedBy || '—',
+          newValue: task.assignedBy || '—',
         });
       }
       if (task.expectedDate && old.expectedDate !== task.expectedDate) {
@@ -742,5 +763,48 @@ export const taskService = {
     mockAuditLogs = [];
     saveStoredAuditLogs([]);
     return { success: true };
+  },
+
+  getAssigners: async (): Promise<string[]> => {
+    const DEFAULT_ASSIGNERS = ['Management', 'Director', 'HOD', 'HR Head', 'Admin', 'MD Alaudin', 'Bhupendra', 'Deepak'];
+    const MASTER_KEY = 'hr_master_assigners_cache';
+
+    if (isGAS) {
+      try {
+        const res = await gasCall<{ success: boolean; assigners: string[] }>('getMasterData');
+        if (res?.assigners && Array.isArray(res.assigners) && res.assigners.length > 0) {
+          localStorage.setItem(MASTER_KEY, JSON.stringify(res.assigners));
+          return res.assigners;
+        }
+      } catch (err) {
+        console.warn('getAssigners GAS error:', err);
+      }
+    } else if (getGasApiUrl()) {
+      try {
+        const res = await callGasApi<{ success: boolean; assigners: string[] }>('getMasterData');
+        if (res?.assigners && Array.isArray(res.assigners) && res.assigners.length > 0) {
+          localStorage.setItem(MASTER_KEY, JSON.stringify(res.assigners));
+          return res.assigners;
+        }
+      } catch (err) {
+        console.warn('getAssigners Web App API error:', err);
+      }
+    }
+
+    try {
+      const cached = localStorage.getItem(MASTER_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+
+    return DEFAULT_ASSIGNERS;
+  },
+
+  saveMasterAssigners: (assigners: string[]): void => {
+    try {
+      localStorage.setItem('hr_master_assigners_cache', JSON.stringify(assigners));
+    } catch { /* ignore */ }
   }
 };
