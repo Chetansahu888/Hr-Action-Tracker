@@ -6,14 +6,63 @@ const RETENTION_DAYS = 30;
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-const calculateReview = (plannedDate: string, actualDate: string): string => {
-  if (!plannedDate || !actualDate) return '';
-  const diffDays = Math.abs(new Date(actualDate).getTime() - new Date(plannedDate).getTime()) / (1000 * 60 * 60 * 24);
-  if (diffDays <= 2.5) return '⭐⭐⭐⭐⭐ Excellent';
-  if (diffDays <= 5) return '⭐⭐⭐⭐ Very Good';
-  if (diffDays <= 7) return '⭐⭐⭐ Good';
-  if (diffDays <= 10) return '⭐⭐ Needs Improvement';
-  return '⭐ Poor';
+export const calculateReview = (dueDateTime: string, actualCompletionTime: string): string => {
+  if (!dueDateTime || !actualCompletionTime) return '';
+  try {
+    const dueTime = new Date(dueDateTime).getTime();
+    const actualTime = new Date(actualCompletionTime).getTime();
+
+    if (isNaN(dueTime) || isNaN(actualTime)) return '';
+
+    // If completed on or before Due Date & Time
+    if (actualTime <= dueTime) {
+      return '⭐⭐⭐⭐⭐ Excellent (On Time)';
+    }
+
+    // Calculate delay in days
+    const delayDays = (actualTime - dueTime) / (1000 * 60 * 60 * 24);
+
+    if (delayDays <= 1.0) return '⭐⭐⭐⭐ Very Good (Minor Delay)';
+    if (delayDays <= 3.0) return '⭐⭐⭐ Good (Delayed)';
+    if (delayDays <= 7.0) return '⭐⭐ Needs Improvement (Late)';
+    return '⭐ Poor (Overdue)';
+  } catch {
+    return '⭐⭐⭐⭐ Very Good';
+  }
+};
+
+export const getTaskDueStatus = (dueDateTime: string, status: TaskStatus): {
+  isOverdue: boolean;
+  text: string;
+  color: string;
+  bg: string;
+} => {
+  if (status === 'Complete 100%') {
+    return { isOverdue: false, text: 'Completed', color: '#059669', bg: '#ecfdf5' };
+  }
+  if (!dueDateTime) {
+    return { isOverdue: false, text: 'No Deadline', color: '#64748b', bg: '#f1f5f9' };
+  }
+  try {
+    const now = Date.now();
+    const due = new Date(dueDateTime).getTime();
+    if (isNaN(due)) return { isOverdue: false, text: 'No Deadline', color: '#64748b', bg: '#f1f5f9' };
+
+    const diffMs = due - now;
+    if (diffMs < 0) {
+      const overdueDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24));
+      const overdueHours = Math.floor((Math.abs(diffMs) % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const label = overdueDays > 0 ? `${overdueDays}d overdue` : `${overdueHours}h overdue`;
+      return { isOverdue: true, text: `⚠️ Overdue (${label})`, color: '#dc2626', bg: '#fef2f2' };
+    }
+
+    const remDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const remHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const label = remDays > 0 ? `${remDays}d left` : `${remHours}h left`;
+    return { isOverdue: false, text: `Due in ${label}`, color: '#059669', bg: '#ecfdf5' };
+  } catch {
+    return { isOverdue: false, text: 'Active', color: '#059669', bg: '#ecfdf5' };
+  }
 };
 
 const INITIAL_TASKS: Task[] = [
@@ -443,7 +492,7 @@ export const taskService = {
       await delay(300);
     }
 
-    const planned = new Date().toISOString();
+    const planned = task.planned || task.dueDate || new Date(Date.now() + 2.5 * 86400000).toISOString();
     const newTask: Task = {
       rowIndex: mockTasks.length + 2,
       sno: nextSno,
@@ -465,6 +514,7 @@ export const taskService = {
     logAudit(nextSno, newTask.problem, newTask.doer, 'CREATED', [
       { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: newTask.problem },
       { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: newTask.doer || 'Unassigned' },
+      { field: 'planned', fieldLabel: 'Due Date & Time', oldValue: '—', newValue: planned },
       { field: 'status', fieldLabel: 'Initial Status', oldValue: '—', newValue: newTask.status },
     ]);
 
@@ -491,6 +541,14 @@ export const taskService = {
           fieldLabel: 'Name of Doer(s)',
           oldValue: old.doer || 'Unassigned',
           newValue: task.doer || 'Unassigned',
+        });
+      }
+      if (task.planned && old.planned !== task.planned) {
+        changes.push({
+          field: 'planned',
+          fieldLabel: 'Due Date & Time',
+          oldValue: old.planned || '—',
+          newValue: task.planned || '—',
         });
       }
       if (old.status !== task.status) {

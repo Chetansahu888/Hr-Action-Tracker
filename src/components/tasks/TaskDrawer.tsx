@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Calendar, User, Clock, CheckCircle2, Star, Hash, Check, Lock } from 'lucide-react';
+import { X, Calendar, User, Clock, CheckCircle2, Star, Hash, Check, Lock, AlertCircle } from 'lucide-react';
 import type { Task, TaskStatus } from '../../types/task';
 import { getStatusConfig, StatusBadge } from '../common/StatusBadge';
+import { getTaskDueStatus } from '../../services/taskService';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface TaskDrawerProps {
@@ -19,7 +20,8 @@ const fmt = (iso: string) => {
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     }).format(new Date(iso));
   } catch {
     return iso;
@@ -302,8 +304,28 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div style={{ background: '#f8fafc', border: '1px solid #e8ecf0', borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Planned Date</div>
+                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>Due Date & Time</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{fmt(task.planned)}</div>
+                {task.status !== 'Complete 100%' && task.planned && (() => {
+                  const dueSt = getTaskDueStatus(task.planned, task.status);
+                  return (
+                    <div style={{ marginTop: 6 }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: dueSt.color,
+                          backgroundColor: dueSt.bg,
+                          padding: '2px 8px',
+                          borderRadius: 99,
+                          display: 'inline-block',
+                        }}
+                      >
+                        {dueSt.text}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div
@@ -315,7 +337,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
                 }}
               >
                 <div style={{ fontSize: 11, color: isComplete ? '#047857' : '#64748b', fontWeight: 600, marginBottom: 4 }}>
-                  Actual Date
+                  Actual Completion
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: isComplete ? '#047857' : '#94a3b8' }}>
                   {task.actual ? fmt(task.actual) : 'In Progress'}
@@ -338,7 +360,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
               >
                 <Clock size={15} color="#0284c7" />
                 <span style={{ fontSize: 12, color: '#0369a1', fontWeight: 500 }}>
-                  Completion Turnaround Time (TAT): <b>{duration}</b>
+                  Completion Turnaround Time: <b>{duration}</b>
                 </span>
               </div>
             )}
@@ -365,7 +387,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
                   {task.review}
                 </div>
                 <div style={{ fontSize: 11, color: '#a16207', marginTop: 4 }}>
-                  Calculated automatically based on 2.5-day TAT SLA standards.
+                  Evaluated against target Due Date & Time SLA standard.
                 </div>
               </div>
             ) : (
@@ -382,7 +404,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ task, onClose, onStatusC
               >
                 <CheckCircle2 size={16} color="#94a3b8" />
                 <span style={{ fontSize: 12, color: '#64748b' }}>
-                  Weekly review rating will automatically calculate when task is marked <b>Complete 100%</b>.
+                  Weekly review star rating will automatically calculate when task is marked <b>Complete 100%</b> based on deadline adherence.
                 </span>
               </div>
             )}

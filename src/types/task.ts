@@ -3,12 +3,13 @@ export type TaskStatus = 'Pending' | 'Progress 25%' | 'Progress 50%' | 'Progress
 export interface Task {
   rowIndex: number;
   sno: number;
-  planned: string; // ISO date string
-  actual: string;  // ISO date string
+  planned: string; // ISO date-time string (Planned / Due Date & Time)
+  actual: string;  // ISO date-time string (Actual Completion Date & Time)
   problem: string;
   doer: string;
   status: TaskStatus;
   review: string;
+  dueDate?: string; // Optional alias for planned due date & time
 }
 
 export interface DashboardData {

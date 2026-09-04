@@ -4,7 +4,7 @@ import {
   ChevronUp, ChevronDown, Loader2, ExternalLink,
   SlidersHorizontal, CheckSquare, X, AlertTriangle, ShieldCheck, User as UserIcon, Lock
 } from 'lucide-react';
-import { taskService, computeDashboard } from '../services/taskService';
+import { taskService, computeDashboard, getTaskDueStatus } from '../services/taskService';
 import type { Task, TaskStatus, SortField, SortDir, DashboardData } from '../types/task';
 import TaskDrawer from '../components/tasks/TaskDrawer';
 import TaskModal from '../components/tasks/TaskModal';
@@ -18,6 +18,24 @@ const fmtDate = (iso: string) => {
   if (!iso) return '—';
   try {
     return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+};
+
+const fmtDateTime = (iso: string) => {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    }).format(d);
   } catch {
     return iso;
   }
@@ -406,7 +424,7 @@ export const Tasks: React.FC = () => {
             }}
           >
             <option value="sno">S.No.</option>
-            <option value="planned">Planned Date</option>
+            <option value="planned">Due Date & Time</option>
             <option value="status">Status</option>
             <option value="doer">Doer</option>
           </select>
@@ -517,7 +535,7 @@ export const Tasks: React.FC = () => {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>Planned <SortIcon field="planned" /></span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>Due Date & Time <SortIcon field="planned" /></span>
                 </th>
 
                 <th
@@ -723,9 +741,31 @@ export const Tasks: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Planned Date */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap', color: '#64748b', fontSize: 12, fontWeight: 500 }}>
-                        {fmtDate(task.planned)}
+                      {/* Due Date & Time */}
+                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                          {fmtDateTime(task.planned)}
+                        </div>
+                        {task.status !== 'Complete 100%' && task.planned ? (() => {
+                          const dueSt = getTaskDueStatus(task.planned, task.status);
+                          return (
+                            <div style={{ marginTop: 3 }}>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: dueSt.color,
+                                  backgroundColor: dueSt.bg,
+                                  padding: '2px 6px',
+                                  borderRadius: 4,
+                                  display: 'inline-block',
+                                }}
+                              >
+                                {dueSt.text}
+                              </span>
+                            </div>
+                          );
+                        })() : null}
                       </td>
 
                       {/* Actual Date */}

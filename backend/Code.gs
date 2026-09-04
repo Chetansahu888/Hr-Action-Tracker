@@ -250,7 +250,13 @@ function addTask(task) {
     nextSno = (Number(lastVal) || (lastRow - 1)) + 1;
   }
   
-  const plannedDate = new Date();
+  let plannedDate = new Date();
+  if (task.planned) {
+    try {
+      const parsed = new Date(task.planned);
+      if (!isNaN(parsed.getTime())) plannedDate = parsed;
+    } catch(e) {}
+  }
   const newRow = [
     plannedDate,
     '',
@@ -267,6 +273,7 @@ function addTask(task) {
   logAuditEntry_(nextSno, task.problem || '', task.doer || '', 'CREATED', [
     { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: task.problem || '' },
     { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: task.doer || 'Unassigned' },
+    { field: 'planned', fieldLabel: 'Due Date & Time', oldValue: '—', newValue: plannedDate.toISOString() },
     { field: 'status', fieldLabel: 'Initial Status', oldValue: '—', newValue: task.status || 'Pending' }
   ]);
   
@@ -286,10 +293,19 @@ function updateTask(task) {
   const rowIndex = findRowIndexBySno(task.sno, sheet);
   if (rowIndex === -1) throw new Error("Task not found");
   
+  const oldPlanned = sheet.getRange(rowIndex, COL.PLANNED).getValue();
   const oldProblem = sheet.getRange(rowIndex, COL.PROBLEM).getValue();
   const oldDoer = sheet.getRange(rowIndex, COL.DOER).getValue();
   const oldStatus = sheet.getRange(rowIndex, COL.STATUS).getValue();
   
+  if (task.planned) {
+    try {
+      const parsed = new Date(task.planned);
+      if (!isNaN(parsed.getTime())) {
+        sheet.getRange(rowIndex, COL.PLANNED).setValue(parsed);
+      }
+    } catch(e) {}
+  }
   sheet.getRange(rowIndex, COL.PROBLEM).setValue(task.problem || '');
   sheet.getRange(rowIndex, COL.DOER).setValue(task.doer || '');
   sheet.getRange(rowIndex, COL.STATUS).setValue(task.status || 'Pending');
@@ -298,9 +314,14 @@ function updateTask(task) {
     handleActualTimestamp_(sheet, rowIndex, true);
   } else if (oldStatus === 'Complete 100%' && task.status !== 'Complete 100%') {
     handleActualTimestamp_(sheet, rowIndex, false);
+  } else if (task.status === 'Complete 100%') {
+    computeWeeklyReview_(sheet, rowIndex);
   }
   
   const changes = [];
+  if (task.planned && String(oldPlanned) !== String(task.planned)) {
+    changes.push({ field: 'planned', fieldLabel: 'Due Date & Time', oldValue: String(oldPlanned || '—'), newValue: String(task.planned) });
+  }
   if (oldProblem !== task.problem) changes.push({ field: 'problem', fieldLabel: 'Problem Statement', oldValue: String(oldProblem || '—'), newValue: String(task.problem || '—') });
   if (oldDoer !== task.doer) changes.push({ field: 'doer', fieldLabel: 'Name of Doer(s)', oldValue: String(oldDoer || 'Unassigned'), newValue: String(task.doer || 'Unassigned') });
   if (oldStatus !== task.status) changes.push({ field: 'status', fieldLabel: 'Status', oldValue: String(oldStatus), newValue: String(task.status) });
@@ -539,19 +560,25 @@ function computeWeeklyReview_(sheet, rowIndex) {
   const pDate = new Date(planned);
   const aDate = new Date(actual);
   
-  const diffDays = (aDate.getTime() - pDate.getTime()) / (1000 * 60 * 60 * 24);
+  if (isNaN(pDate.getTime()) || isNaN(aDate.getTime())) return;
+  
+  // If completed on or before Due Date/Time
+  if (aDate.getTime() <= pDate.getTime()) {
+    sheet.getRange(rowIndex, COL.REVIEW).setValue('⭐⭐⭐⭐⭐ Excellent (On Time)');
+    return;
+  }
+  
+  const delayDays = (aDate.getTime() - pDate.getTime()) / (1000 * 60 * 60 * 24);
   
   let review = '';
-  if (diffDays <= 2.5) {
-    review = '⭐⭐⭐⭐⭐ Excellent';
-  } else if (diffDays <= 5) {
-    review = '⭐⭐⭐⭐ Very Good';
-  } else if (diffDays <= 7) {
-    review = '⭐⭐⭐ Good';
-  } else if (diffDays <= 10) {
-    review = '⭐⭐ Needs Improvement';
+  if (delayDays <= 1.0) {
+    review = '⭐⭐⭐⭐ Very Good (Minor Delay)';
+  } else if (delayDays <= 3.0) {
+    review = '⭐⭐⭐ Good (Delayed)';
+  } else if (delayDays <= 7.0) {
+    review = '⭐⭐ Needs Improvement (Late)';
   } else {
-    review = '⭐ Poor';
+    review = '⭐ Poor (Overdue)';
   }
   
   sheet.getRange(rowIndex, COL.REVIEW).setValue(review);
