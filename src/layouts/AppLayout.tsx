@@ -382,26 +382,41 @@ export default function AppLayout() {
           {/* Right Controls: Syncing Pill, User Badge, Logout */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             
-            {/* Live Sync Indicator */}
+            {/* Refresh Option */}
             <button
               onClick={triggerSync}
-              title="Click to sync live with Google Sheet"
+              disabled={isSyncing}
+              title="Refresh data from Google Sheet"
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
-                padding: '6px 12px',
-                borderRadius: 99,
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                color: '#15803d',
-                fontSize: 12,
+                padding: '7px 14px',
+                borderRadius: 9,
+                background: '#ffffff',
+                border: '1px solid #e2e8f0',
+                color: '#334155',
+                fontSize: 13,
                 fontWeight: 600,
-                cursor: 'pointer',
+                cursor: isSyncing ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => {
+                if (!isSyncing) (e.currentTarget as HTMLElement).style.background = '#f8fafc';
+              }}
+              onMouseLeave={e => {
+                if (!isSyncing) (e.currentTarget as HTMLElement).style.background = '#ffffff';
               }}
             >
-              <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
-              <span>{isSyncing ? 'Syncing...' : 'Live Connected'}</span>
+              <RefreshCw
+                size={14}
+                style={{
+                  animation: isSyncing ? 'spin 0.8s linear infinite' : 'none',
+                  color: '#475569'
+                }}
+              />
+              <span>{isSyncing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
 
             {/* Administrator Badge Pill */}

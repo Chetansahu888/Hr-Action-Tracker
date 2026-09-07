@@ -84,7 +84,9 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 2,
     sno: 1,
     planned: new Date(Date.now() - 6 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 6.5 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 5 * 86400000).toISOString(),
+    committedDate: new Date(Date.now() - 4 * 86400000).toISOString(),
+    dueDate: new Date(Date.now() - 4 * 86400000).toISOString(),
     actual: new Date(Date.now() - 4 * 86400000).toISOString(),
     problem: 'Process Monthly Attendance and Leave Reconciliation for Production Unit',
     doer: 'Bhupendra',
@@ -96,7 +98,9 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 3,
     sno: 2,
     planned: new Date(Date.now() - 5 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 5.5 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 3 * 86400000).toISOString(),
+    committedDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+    dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
     actual: '',
     problem: 'Conduct Background Verification for 12 newly joined Warehouse Associates',
     doer: 'Deepak',
@@ -108,7 +112,9 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 4,
     sno: 3,
     planned: new Date(Date.now() - 4 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 4.5 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+    committedDate: new Date(Date.now() - 1 * 86400000).toISOString(),
+    dueDate: new Date(Date.now() - 1 * 86400000).toISOString(),
     actual: '',
     problem: 'Coordinate Annual Statutory Compliance Audit with external auditor',
     doer: 'MD Alaudin',
@@ -120,7 +126,9 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 5,
     sno: 4,
     planned: new Date(Date.now() - 3 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 3.5 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() + 1 * 86400000).toISOString(),
+    committedDate: new Date(Date.now() + 2 * 86400000).toISOString(),
+    dueDate: new Date(Date.now() + 2 * 86400000).toISOString(),
     actual: '',
     problem: 'Prepare Employee ESIC & PF monthly remittance challan report',
     doer: 'Deepak',
@@ -132,7 +140,9 @@ const INITIAL_TASKS: Task[] = [
     rowIndex: 6,
     sno: 5,
     planned: new Date(Date.now() - 2 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 2.5 * 86400000).toISOString(),
+    expectedDate: new Date(Date.now() + 2 * 86400000).toISOString(),
+    committedDate: new Date(Date.now() + 3 * 86400000).toISOString(),
+    dueDate: new Date(Date.now() + 3 * 86400000).toISOString(),
     actual: '',
     problem: 'Schedule Second Round Technical Interviews for Senior DevOps Engineer position',
     doer: 'Bhupendra, Deepak',
@@ -142,45 +152,7 @@ const INITIAL_TASKS: Task[] = [
   },
 ];
 
-const INITIAL_AUDIT_LOGS: TaskAuditLog[] = [
-  {
-    id: 'log-init-1',
-    taskSno: 1,
-    problem: 'Process Monthly Attendance and Leave Reconciliation for Production Unit',
-    doer: 'Bhupendra',
-    action: 'STATUS_CHANGED',
-    timestamp: new Date(Date.now() - 4 * 86400000).toISOString(),
-    changes: [
-      { field: 'status', fieldLabel: 'Status', oldValue: 'Progress 75%', newValue: 'Complete 100%' },
-      { field: 'actual', fieldLabel: 'Actual Completion', oldValue: '—', newValue: 'Completed on Time' },
-      { field: 'review', fieldLabel: 'Weekly Review', oldValue: '—', newValue: '⭐⭐⭐⭐⭐ Excellent' }
-    ]
-  },
-  {
-    id: 'log-init-2',
-    taskSno: 2,
-    problem: 'Conduct Background Verification for 12 newly joined Warehouse Associates',
-    doer: 'Deepak',
-    action: 'STATUS_CHANGED',
-    timestamp: new Date(Date.now() - 2 * 86400000).toISOString(),
-    changes: [
-      { field: 'status', fieldLabel: 'Status', oldValue: 'Progress 50%', newValue: 'Progress 75%' }
-    ]
-  },
-  {
-    id: 'log-init-3',
-    taskSno: 5,
-    problem: 'Schedule Second Round Technical Interviews for Senior DevOps Engineer position',
-    doer: 'Bhupendra, Deepak',
-    action: 'CREATED',
-    timestamp: new Date(Date.now() - 2 * 86400000).toISOString(),
-    changes: [
-      { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: 'Schedule Second Round Technical Interviews for Senior DevOps Engineer position' },
-      { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: 'Bhupendra, Deepak' },
-      { field: 'status', fieldLabel: 'Initial Status', oldValue: '—', newValue: 'Progress 25%' }
-    ]
-  },
-];
+const INITIAL_AUDIT_LOGS: TaskAuditLog[] = [];
 
 const isGAS = typeof window !== 'undefined' && Boolean((window as any).google?.script?.run);
 
@@ -215,10 +187,11 @@ const getStoredAuditLogs = (): TaskAuditLog[] => {
     const raw = localStorage.getItem(STORAGE_AUDIT_KEY);
     if (raw) {
       const parsed: TaskAuditLog[] = JSON.parse(raw);
-      return filterRetentionLogs(parsed);
+      const filtered = parsed.filter(l => !l.id?.startsWith('log-init-'));
+      return filterRetentionLogs(filtered);
     }
   } catch (e) { /* ignore */ }
-  return filterRetentionLogs([...INITIAL_AUDIT_LOGS]);
+  return [];
 };
 
 const saveStoredAuditLogs = (logs: TaskAuditLog[]) => {
@@ -236,13 +209,15 @@ const logAudit = (
   problem: string,
   doer: string,
   action: 'CREATED' | 'EDITED' | 'STATUS_CHANGED' | 'DELETED',
-  changes: AuditChange[]
+  changes: AuditChange[],
+  modifiedBy?: string
 ) => {
   const newEntry: TaskAuditLog = {
     id: `log-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
     taskSno,
     problem,
     doer: doer || '',
+    modifiedBy: modifiedBy || 'Admin',
     action,
     timestamp: new Date().toISOString(),
     changes,
@@ -252,6 +227,7 @@ const logAudit = (
 };
 
 const GAS_API_STORAGE_KEY = 'hr_gas_web_app_url';
+export const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbwPBNIsaFci80unGI0gUhCY0p06DAvMksOZFAvhy5koPOGcRUfKGYxO0UGeH-mQVsEn/exec';
 
 export const getGasApiUrl = (): string => {
   try {
@@ -260,7 +236,7 @@ export const getGasApiUrl = (): string => {
   } catch { /* ignore */ }
   const fromEnv = (import.meta as any).env?.VITE_GAS_API_URL;
   if (fromEnv && typeof fromEnv === 'string' && fromEnv.trim()) return fromEnv.trim();
-  return '';
+  return DEFAULT_GAS_URL;
 };
 
 export const setGasApiUrl = (url: string): void => {
@@ -318,9 +294,43 @@ const gasCall = <T>(fn: string, ...args: any[]): Promise<T> =>
       [fn](...args)
   );
 
+export const isGasConfigured = (): boolean => {
+  return isGAS || Boolean(getGasApiUrl());
+};
+
 export const taskService = {
   getGasApiUrl,
   setGasApiUrl,
+  isGasConfigured,
+
+  syncAllLocalTasksToGas: async (): Promise<{ success: boolean; count: number; message: string }> => {
+    const apiUrl = getGasApiUrl();
+    if (!apiUrl && !isGAS) {
+      throw new Error('Google Sheet Web App URL is not set. Please paste your URL in Settings.');
+    }
+    const localTasks = getStoredTasks();
+    if (localTasks.length === 0) {
+      return { success: true, count: 0, message: 'No local tasks found to sync.' };
+    }
+    let successCount = 0;
+    for (const t of [...localTasks].reverse()) {
+      try {
+        if (isGAS) {
+          await gasCall('addTask', t);
+        } else {
+          await callGasApi('addTask', { task: t });
+        }
+        successCount++;
+      } catch (err) {
+        console.error('Failed to sync task to sheet:', t, err);
+      }
+    }
+    return {
+      success: true,
+      count: successCount,
+      message: `Successfully synced ${successCount} tasks directly to your Google Sheet!`,
+    };
+  },
 
   testConnection: async (url?: string): Promise<{ success: boolean; message: string; sheetName?: string }> => {
     const targetUrl = (url || getGasApiUrl()).trim();
@@ -495,19 +505,47 @@ export const taskService = {
     } catch { /* ignore */ }
   },
 
-  addTask: async (task: Partial<Task>): Promise<{ success: boolean; sno: number }> => {
+  addTask: async (task: Partial<Task>, modifiedBy?: string): Promise<{ success: boolean; sno: number }> => {
     let nextSno = mockTasks.length > 0 ? Math.max(...mockTasks.map(t => t.sno)) + 1 : 1;
+
+    const planned = task.planned || new Date().toISOString(); // Task Given Date (Col A)
+    const expectedDate = task.expectedDate || '';
+    const committedDate = task.committedDate || task.dueDate || planned;
+    const assignedBy = task.assignedBy || 'Management';
+    const doer = task.doer || '';
+    const status = task.status || 'Pending';
+    const userStr = modifiedBy || assignedBy || 'Admin';
 
     if (isGAS) {
       try {
-        const res = await gasCall<{ success: boolean; sno: number }>('addTask', task);
+        const res = await gasCall<{ success: boolean; sno: number }>('addTask', {
+          ...task,
+          planned,
+          expectedDate,
+          committedDate,
+          assignedBy,
+          doer,
+          status,
+          modifiedBy: userStr,
+        });
         if (res && res.sno) nextSno = res.sno;
       } catch (err) {
         console.warn('addTask GAS error:', err);
       }
     } else if (getGasApiUrl()) {
       try {
-        const res = await callGasApi<{ success: boolean; sno: number }>('addTask', { task });
+        const res = await callGasApi<{ success: boolean; sno: number }>('addTask', {
+          task: {
+            ...task,
+            planned,
+            expectedDate,
+            committedDate,
+            assignedBy,
+            doer,
+            status,
+            modifiedBy: userStr,
+          }
+        });
         if (res && res.sno) nextSno = res.sno;
       } catch (err) {
         console.warn('addTask Web App API error:', err);
@@ -516,43 +554,33 @@ export const taskService = {
       await delay(300);
     }
 
-    const planned = task.planned || task.dueDate || new Date(Date.now() + 2.5 * 86400000).toISOString();
-    const expectedDate = task.expectedDate || planned;
-    const assignedBy = task.assignedBy || 'Management';
     const newTask: Task = {
       rowIndex: mockTasks.length + 2,
       sno: nextSno,
       planned,
-      expectedDate,
       actual: '',
       problem: task.problem || '',
-      doer: task.doer || '',
       assignedBy,
-      status: task.status || 'Pending',
+      doer,
+      expectedDate,
+      committedDate,
+      dueDate: committedDate,
+      status,
       review: '',
     };
     if (newTask.status === 'Complete 100%') {
       newTask.actual = new Date().toISOString();
-      newTask.review = calculateReview(planned, newTask.actual, expectedDate);
+      newTask.review = calculateReview(committedDate || planned, newTask.actual, expectedDate);
     }
     mockTasks = [newTask, ...mockTasks.filter(t => t.sno !== nextSno)];
     saveStoredTasks(mockTasks);
 
-    // Audit log
-    logAudit(nextSno, newTask.problem, newTask.doer, 'CREATED', [
-      { field: 'problem', fieldLabel: 'Task Problem', oldValue: '—', newValue: newTask.problem },
-      { field: 'doer', fieldLabel: 'Assigned Doer(s)', oldValue: '—', newValue: newTask.doer || 'Unassigned' },
-      { field: 'assignedBy', fieldLabel: 'Assigned By', oldValue: '—', newValue: assignedBy },
-      { field: 'expectedDate', fieldLabel: 'Expected Date & Time', oldValue: '—', newValue: expectedDate },
-      { field: 'planned', fieldLabel: 'Due Date & Time', oldValue: '—', newValue: planned },
-      { field: 'status', fieldLabel: 'Initial Status', oldValue: '—', newValue: newTask.status },
-    ]);
-
     return { success: true, sno: nextSno };
   },
 
-  updateTask: async (task: Task): Promise<{ success: boolean }> => {
+  updateTask: async (task: Task, modifiedBy?: string): Promise<{ success: boolean }> => {
     const old = mockTasks.find(t => t.sno === task.sno);
+    const userStr = modifiedBy || 'Admin';
 
     // Compute diffs
     const changes: AuditChange[] = [];
@@ -568,7 +596,7 @@ export const taskService = {
       if (old.doer !== task.doer) {
         changes.push({
           field: 'doer',
-          fieldLabel: 'Name of Doer(s)',
+          fieldLabel: 'Name of Doer',
           oldValue: old.doer || 'Unassigned',
           newValue: task.doer || 'Unassigned',
         });
@@ -576,7 +604,7 @@ export const taskService = {
       if (task.assignedBy !== undefined && old.assignedBy !== task.assignedBy) {
         changes.push({
           field: 'assignedBy',
-          fieldLabel: 'Assigned By',
+          fieldLabel: 'Assign By',
           oldValue: old.assignedBy || '—',
           newValue: task.assignedBy || '—',
         });
@@ -584,17 +612,17 @@ export const taskService = {
       if (task.expectedDate && old.expectedDate !== task.expectedDate) {
         changes.push({
           field: 'expectedDate',
-          fieldLabel: 'Expected Date & Time',
+          fieldLabel: 'Expected Target Date & Time',
           oldValue: old.expectedDate || '—',
           newValue: task.expectedDate || '—',
         });
       }
-      if (task.planned && old.planned !== task.planned) {
+      if (task.committedDate && old.committedDate !== task.committedDate) {
         changes.push({
-          field: 'planned',
-          fieldLabel: 'Due Date & Time',
-          oldValue: old.planned || '—',
-          newValue: task.planned || '—',
+          field: 'committedDate',
+          fieldLabel: 'Committed Due Date & Tim',
+          oldValue: old.committedDate || '—',
+          newValue: task.committedDate || '—',
         });
       }
       if (old.status !== task.status) {
@@ -621,18 +649,18 @@ export const taskService = {
     }
 
     if (changes.length > 0) {
-      logAudit(task.sno, task.problem, task.doer, 'EDITED', changes);
+      logAudit(task.sno, task.problem, task.doer, 'EDITED', changes, userStr);
     }
 
     if (isGAS) {
       try {
-        await gasCall('updateTask', task);
+        await gasCall('updateTask', { ...task, modifiedBy: userStr });
       } catch (err) {
         console.warn('updateTask GAS error:', err);
       }
     } else if (getGasApiUrl()) {
       try {
-        await callGasApi('updateTask', { task });
+        await callGasApi('updateTask', { task: { ...task, modifiedBy: userStr } });
       } catch (err) {
         console.warn('updateTask Web App API error:', err);
       }
@@ -644,9 +672,10 @@ export const taskService = {
     if (index !== -1) {
       const existing = mockTasks[index];
       const updated: Task = { ...existing, ...task };
+      const deadline = updated.committedDate || updated.dueDate || updated.planned;
       if (existing.status !== 'Complete 100%' && task.status === 'Complete 100%') {
         updated.actual = new Date().toISOString();
-        updated.review = calculateReview(updated.planned, updated.actual, updated.expectedDate);
+        updated.review = calculateReview(deadline, updated.actual, updated.expectedDate);
       } else if (existing.status === 'Complete 100%' && task.status !== 'Complete 100%') {
         updated.actual = '';
         updated.review = '';
@@ -658,20 +687,21 @@ export const taskService = {
     return { success: true };
   },
 
-  updateStatus: async (sno: number, status: TaskStatus): Promise<{ success: boolean }> => {
+  updateStatus: async (sno: number, status: TaskStatus, modifiedBy?: string): Promise<{ success: boolean }> => {
     const existing = mockTasks.find(t => t.sno === sno);
     const oldStatus = existing?.status || 'Pending';
     const problem = existing?.problem || `Task #${sno}`;
     const doer = existing?.doer || '';
+    const userStr = modifiedBy || 'User';
 
     const changes: AuditChange[] = [
       { field: 'status', fieldLabel: 'Status', oldValue: oldStatus, newValue: status }
     ];
 
     if (oldStatus !== 'Complete 100%' && status === 'Complete 100%') {
-      const planned = existing?.planned || new Date().toISOString();
+      const deadline = existing?.committedDate || existing?.dueDate || existing?.planned || new Date().toISOString();
       const actual = new Date().toISOString();
-      const review = calculateReview(planned, actual, existing?.expectedDate);
+      const review = calculateReview(deadline, actual, existing?.expectedDate);
       changes.push({
         field: 'actual',
         fieldLabel: 'Actual Completion',
@@ -693,17 +723,17 @@ export const taskService = {
       });
     }
 
-    logAudit(sno, problem, doer, 'STATUS_CHANGED', changes);
+    logAudit(sno, problem, doer, 'STATUS_CHANGED', changes, userStr);
 
     if (isGAS) {
       try {
-        await gasCall('updateStatus', sno, status);
+        await gasCall('updateStatus', sno, status, userStr);
       } catch (err) {
         console.warn('updateStatus GAS error:', err);
       }
     } else if (getGasApiUrl()) {
       try {
-        await callGasApi('updateStatus', { sno, status });
+        await callGasApi('updateStatus', { sno, status, modifiedBy: userStr });
       } catch (err) {
         console.warn('updateStatus Web App API error:', err);
       }
@@ -714,9 +744,10 @@ export const taskService = {
     const index = mockTasks.findIndex(t => t.sno === sno);
     if (index !== -1) {
       const updated = { ...mockTasks[index], status };
+      const deadline = updated.committedDate || updated.dueDate || updated.planned;
       if (oldStatus !== 'Complete 100%' && status === 'Complete 100%') {
         updated.actual = new Date().toISOString();
-        updated.review = calculateReview(updated.planned, updated.actual, updated.expectedDate);
+        updated.review = calculateReview(deadline, updated.actual, updated.expectedDate);
       } else if (oldStatus === 'Complete 100%' && status !== 'Complete 100%') {
         updated.actual = '';
         updated.review = '';
@@ -728,24 +759,25 @@ export const taskService = {
     return { success: true };
   },
 
-  deleteTask: async (sno: number): Promise<{ success: boolean }> => {
+  deleteTask: async (sno: number, modifiedBy?: string): Promise<{ success: boolean }> => {
     const taskToDelete = mockTasks.find(t => t.sno === sno);
     const problem = taskToDelete?.problem || `Task #${sno}`;
     const doer = taskToDelete?.doer || '';
+    const userStr = modifiedBy || 'Admin';
 
     logAudit(sno, problem, doer, 'DELETED', [
       { field: 'task', fieldLabel: 'Task Removed', oldValue: problem, newValue: 'Deleted' }
-    ]);
+    ], userStr);
 
     if (isGAS) {
       try {
-        await gasCall('deleteTask', sno);
+        await gasCall('deleteTask', sno, userStr);
       } catch (err) {
         console.warn('deleteTask GAS error:', err);
       }
     } else if (getGasApiUrl()) {
       try {
-        await callGasApi('deleteTask', { sno });
+        await callGasApi('deleteTask', { sno, modifiedBy: userStr });
       } catch (err) {
         console.warn('deleteTask Web App API error:', err);
       }
@@ -806,5 +838,75 @@ export const taskService = {
     try {
       localStorage.setItem('hr_master_assigners_cache', JSON.stringify(assigners));
     } catch { /* ignore */ }
+  },
+
+  getUsers: async (): Promise<any[]> => {
+    if (isGAS) {
+      try {
+        const res = await gasCall<{ success: boolean; users: any[] }>('getUsers');
+        if (res?.users && Array.isArray(res.users) && res.users.length > 0) return res.users;
+      } catch (err) {
+        console.warn('getUsers GAS error:', err);
+      }
+    } else if (getGasApiUrl()) {
+      try {
+        const res = await callGasApi<{ success: boolean; users: any[] }>('getUsers');
+        if (res?.users && Array.isArray(res.users) && res.users.length > 0) return res.users;
+      } catch (err) {
+        console.warn('getUsers Web App API error:', err);
+      }
+    }
+    return [];
+  },
+
+  saveUser: async (user: any): Promise<{ success: boolean }> => {
+    if (isGAS) {
+      try {
+        await gasCall('saveUser', user);
+      } catch (err) {
+        console.warn('saveUser GAS error:', err);
+      }
+    } else if (getGasApiUrl()) {
+      try {
+        await callGasApi('saveUser', { user });
+      } catch (err) {
+        console.warn('saveUser Web App API error:', err);
+      }
+    }
+    return { success: true };
+  },
+
+  deleteUser: async (userId: string): Promise<{ success: boolean }> => {
+    if (isGAS) {
+      try {
+        await gasCall('deleteUser', userId);
+      } catch (err) {
+        console.warn('deleteUser GAS error:', err);
+      }
+    } else if (getGasApiUrl()) {
+      try {
+        await callGasApi('deleteUser', { userId });
+      } catch (err) {
+        console.warn('deleteUser Web App API error:', err);
+      }
+    }
+    return { success: true };
+  },
+
+  syncUsers: async (users: any[]): Promise<{ success: boolean }> => {
+    if (isGAS) {
+      try {
+        await gasCall('syncUsers', users);
+      } catch (err) {
+        console.warn('syncUsers GAS error:', err);
+      }
+    } else if (getGasApiUrl()) {
+      try {
+        await callGasApi('syncUsers', { users });
+      } catch (err) {
+        console.warn('syncUsers Web App API error:', err);
+      }
+    }
+    return { success: true };
   }
 };

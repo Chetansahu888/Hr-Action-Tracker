@@ -3,15 +3,16 @@ export type TaskStatus = 'Pending' | 'Progress 25%' | 'Progress 50%' | 'Progress
 export interface Task {
   rowIndex: number;
   sno: number;
-  planned: string; // ISO date-time string (Planned / Due Date & Time)
-  actual: string;  // ISO date-time string (Actual Completion Date & Time)
-  problem: string;
-  doer: string;
-  status: TaskStatus;
-  review: string;
-  dueDate?: string; // Optional alias for planned due date & time
-  expectedDate?: string; // ISO date-time string for Assigner Target Expected Date & Time
-  assignedBy?: string; // Name of person who assigned the task (from Master Sheet Col A)
+  planned: string; // ISO date-time string: Task Assigned / Given Date (Col A)
+  actual: string;  // ISO date-time string: Actual Completion Date & Time (Col B)
+  problem: string; // Problem / Task description (Col D)
+  assignedBy?: string; // Name of person who assigned the task (Col E)
+  doer: string;    // Name of Doer (Col F)
+  expectedDate?: string; // ISO date-time string for Assigner Target Expected Date & Time (Col G)
+  committedDate?: string; // ISO date-time string for Doer Committed Due Date & Time (Col H)
+  dueDate?: string; // Optional alias for committed due date & time
+  status: TaskStatus; // Status (Col I)
+  review: string;  // Weekly Review SLA rating (Col J)
 }
 
 export interface DashboardData {
@@ -38,7 +39,9 @@ export interface TaskAuditLog {
   taskSno: number;
   problem: string;
   doer?: string;
+  modifiedBy?: string; // Logged-in user who made the change
   action: 'CREATED' | 'EDITED' | 'STATUS_CHANGED' | 'DELETED';
   timestamp: string;
   changes: AuditChange[];
 }
+

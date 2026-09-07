@@ -179,7 +179,7 @@ export const Tasks: React.FC = () => {
   const handleStatusChange = async (sno: number, newStatus: TaskStatus) => {
     setTasks(prev => prev.map(t => t.sno === sno ? { ...t, status: newStatus } : t));
     try {
-      await taskService.updateStatus(sno, newStatus);
+      await taskService.updateStatus(sno, newStatus, user?.name);
       toast.success('Status updated');
       loadTasks(true);
     } catch {
@@ -192,7 +192,7 @@ export const Tasks: React.FC = () => {
     if (!taskToDelete) return;
     setDeleting(true);
     try {
-      await taskService.deleteTask(taskToDelete.sno);
+      await taskService.deleteTask(taskToDelete.sno, user?.name);
       toast.success(`Task #${taskToDelete.sno} deleted successfully`);
       setTasks(prev => prev.filter(t => t.sno !== taskToDelete.sno));
       if (drawerTask?.sno === taskToDelete.sno) setDrawerTask(null);
@@ -222,18 +222,11 @@ export const Tasks: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18, fontFamily: "'Inter', sans-serif" }}>
 
       {/* ─ Header ─ */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px', lineHeight: 1.2 }}>
             HR Action Items
           </h1>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-            {isAdmin ? (
-              <span style={{ color: '#047857', fontWeight: 600 }}>Admin Mode: Full access to add, edit, delete and update any task.</span>
-            ) : (
-              <span>Logged in as <b>{user?.name}</b> (Doer) — You can update status for tasks assigned to you.</span>
-            )}
-          </p>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -487,7 +480,7 @@ export const Tasks: React.FC = () => {
                 <th
                   onClick={() => toggleSort('sno')}
                   style={{
-                    padding: '12px 18px',
+                    padding: '12px 14px',
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#475569',
@@ -503,22 +496,36 @@ export const Tasks: React.FC = () => {
 
                 <th
                   style={{
-                    padding: '12px 18px',
+                    padding: '12px 14px',
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#475569',
                     textTransform: 'uppercase',
                     letterSpacing: '0.06em',
-                    minWidth: 260,
+                    minWidth: 220,
                   }}
                 >
                   Problem / Task
                 </th>
 
                 <th
+                  style={{
+                    padding: '12px 14px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Assign By
+                </th>
+
+                <th
                   onClick={() => toggleSort('doer')}
                   style={{
-                    padding: '12px 18px',
+                    padding: '12px 14px',
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#475569',
@@ -529,13 +536,13 @@ export const Tasks: React.FC = () => {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>Doer(s) <SortIcon field="doer" /></span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>Name Of Doer <SortIcon field="doer" /></span>
                 </th>
 
                 <th
                   onClick={() => toggleSort('planned')}
                   style={{
-                    padding: '12px 18px',
+                    padding: '12px 14px',
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#475569',
@@ -546,12 +553,40 @@ export const Tasks: React.FC = () => {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>Due Date & Time <SortIcon field="planned" /></span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center' }}>Planned (Given Date) <SortIcon field="planned" /></span>
                 </th>
 
                 <th
                   style={{
-                    padding: '12px 18px',
+                    padding: '12px 14px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Expected Target
+                </th>
+
+                <th
+                  style={{
+                    padding: '12px 14px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Committed Due
+                </th>
+
+                <th
+                  style={{
+                    padding: '12px 14px',
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#475569',
@@ -566,7 +601,7 @@ export const Tasks: React.FC = () => {
                 <th
                   onClick={() => toggleSort('status')}
                   style={{
-                    padding: '12px 18px',
+                    padding: '12px 14px',
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#475569',
@@ -582,13 +617,13 @@ export const Tasks: React.FC = () => {
 
                 <th
                   style={{
-                    padding: '12px 18px',
+                    padding: '12px 14px',
                     fontSize: 11,
                     fontWeight: 700,
                     color: '#475569',
                     textTransform: 'uppercase',
                     letterSpacing: '0.06em',
-                    minWidth: 160,
+                    minWidth: 150,
                   }}
                 >
                   Weekly Review
@@ -597,7 +632,7 @@ export const Tasks: React.FC = () => {
                 {isAdmin && (
                   <th
                     style={{
-                      padding: '12px 18px',
+                      padding: '12px 14px',
                       fontSize: 11,
                       fontWeight: 700,
                       color: '#475569',
@@ -607,7 +642,7 @@ export const Tasks: React.FC = () => {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    Admin Actions
+                    Actions
                   </th>
                 )}
               </tr>
@@ -617,14 +652,14 @@ export const Tasks: React.FC = () => {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td colSpan={isAdmin ? 8 : 7} style={{ padding: '16px 18px' }}>
+                    <td colSpan={isAdmin ? 11 : 10} style={{ padding: '16px 18px' }}>
                       <div style={{ height: 18, background: '#f1f5f9', borderRadius: 6 }} />
                     </td>
                   </tr>
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 8 : 7} style={{ padding: '60px 24px', textAlign: 'center' }}>
+                  <td colSpan={isAdmin ? 11 : 10} style={{ padding: '60px 24px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 48, height: 48, borderRadius: 14, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <CheckSquare size={24} color="#94a3b8" />
@@ -670,8 +705,8 @@ export const Tasks: React.FC = () => {
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.backgroundColor = '#f8fafc'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'; }}
                     >
-                      {/* S.No. */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                      {/* 1. S.No. (Col C) */}
+                      <td style={{ padding: '14px 14px', whiteSpace: 'nowrap' }}>
                         <span
                           style={{
                             display: 'inline-flex',
@@ -691,23 +726,25 @@ export const Tasks: React.FC = () => {
                         </span>
                       </td>
 
-                      {/* Problem / Task */}
-                      <td style={{ padding: '14px 18px', maxWidth: 340 }}>
+                      {/* 2. Problem / Task (Col D) */}
+                      <td style={{ padding: '14px 14px', maxWidth: 280 }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>
                             {task.problem}
                           </span>
                           <ExternalLink size={12} color="#cbd5e1" style={{ flexShrink: 0, marginTop: 3 }} />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                          <span style={{ fontSize: 11, color: '#475569', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>
-                            Assign By: <strong style={{ color: '#1d4ed8' }}>{task.assignedBy || 'Management'}</strong>
-                          </span>
-                        </div>
                       </td>
 
-                      {/* Doer Chips */}
-                      <td style={{ padding: '14px 18px' }}>
+                      {/* 3. Assign By (Col E) */}
+                      <td style={{ padding: '14px 14px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: 11, color: '#1e40af', background: '#eff6ff', border: '1px solid #bfdbfe', padding: '3px 8px', borderRadius: 6, fontWeight: 700 }}>
+                          {task.assignedBy || 'Management'}
+                        </span>
+                      </td>
+
+                      {/* 4. Name Of Doer (Col F - Name wise) */}
+                      <td style={{ padding: '14px 14px' }}>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                           {doers.length > 0 ? (
                             doers.map((d, i) => {
@@ -719,10 +756,10 @@ export const Tasks: React.FC = () => {
                                   style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: 6,
-                                    padding: '3px 8px',
+                                    gap: 5,
+                                    padding: '2px 8px',
                                     borderRadius: 99,
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     fontWeight: isMe ? 800 : 600,
                                     backgroundColor: col.bg,
                                     color: col.text,
@@ -732,8 +769,8 @@ export const Tasks: React.FC = () => {
                                 >
                                   <span
                                     style={{
-                                      width: 16,
-                                      height: 16,
+                                      width: 15,
+                                      height: 15,
                                       borderRadius: '50%',
                                       backgroundColor: col.avatarBg,
                                       color: '#ffffff',
@@ -757,22 +794,37 @@ export const Tasks: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Due Date & Time */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                      {/* 5. Planned / Assigned Date (Col A - "jab task denge") */}
+                      <td style={{ padding: '14px 14px', whiteSpace: 'nowrap' }}>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
                           {fmtDateTime(task.planned)}
                         </div>
-                        {task.status !== 'Complete 100%' && task.planned ? (() => {
-                          const dueSt = getTaskDueStatus(task.planned, task.status);
+                      </td>
+
+                      {/* 6. Expected Target Date (Col G) */}
+                      <td style={{ padding: '14px 14px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#166534' }}>
+                          {fmtDateTime(task.expectedDate || '')}
+                        </div>
+                      </td>
+
+                      {/* 7. Committed Due Date (Col H) */}
+                      <td style={{ padding: '14px 14px', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#0f172a' }}>
+                          {fmtDateTime(task.committedDate || task.dueDate || task.planned)}
+                        </div>
+                        {task.status !== 'Complete 100%' ? (() => {
+                          const deadline = task.committedDate || task.dueDate || task.planned;
+                          const dueSt = getTaskDueStatus(deadline, task.status);
                           return (
-                            <div style={{ marginTop: 3 }}>
+                            <div style={{ marginTop: 2 }}>
                               <span
                                 style={{
                                   fontSize: 10,
                                   fontWeight: 700,
                                   color: dueSt.color,
                                   backgroundColor: dueSt.bg,
-                                  padding: '2px 6px',
+                                  padding: '1px 5px',
                                   borderRadius: 4,
                                   display: 'inline-block',
                                 }}
@@ -784,17 +836,19 @@ export const Tasks: React.FC = () => {
                         })() : null}
                       </td>
 
-                      {/* Actual Date */}
-                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap', fontSize: 12 }}>
+                      {/* 8. Actual Completion Date (Col B - "jab task complete hoga tab") */}
+                      <td style={{ padding: '14px 14px', whiteSpace: 'nowrap', fontSize: 12 }}>
                         {task.actual ? (
-                          <span style={{ color: '#047857', fontWeight: 600 }}>{fmtDate(task.actual)}</span>
+                          <span style={{ color: '#047857', fontWeight: 700, background: '#ecfdf5', padding: '2px 7px', borderRadius: 6, border: '1px solid #a7f3d0' }}>
+                            {fmtDateTime(task.actual)}
+                          </span>
                         ) : (
-                          <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>In progress</span>
+                          <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: 11 }}>In progress</span>
                         )}
                       </td>
 
-                      {/* Status Dropdown (Editable if Admin OR Assigned Doer) */}
-                      <td style={{ padding: '14px 18px' }} onClick={e => e.stopPropagation()}>
+                      {/* 9. Status Dropdown (Col I) */}
+                      <td style={{ padding: '14px 14px' }} onClick={e => e.stopPropagation()}>
                         {userCanChangeThisStatus ? (
                           <select
                             value={task.status}
@@ -821,22 +875,22 @@ export const Tasks: React.FC = () => {
                         )}
                       </td>
 
-                      {/* Weekly Review */}
-                      <td style={{ padding: '14px 18px' }}>
+                      {/* 10. Weekly Review (Col J) */}
+                      <td style={{ padding: '14px 14px' }}>
                         {task.review ? (
-                          <span style={{ fontSize: 12, fontWeight: 700, color: '#854d0e' }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#854d0e' }}>
                             {task.review}
                           </span>
                         ) : (
                           <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic' }}>
-                            Auto-calculates on done
+                            Auto on complete
                           </span>
                         )}
                       </td>
 
-                      {/* Admin Actions (Edit / Delete) */}
+                      {/* 11. Admin Actions (Edit / Delete) */}
                       {isAdmin && (
-                        <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                        <td style={{ padding: '14px 14px', textAlign: 'right', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             
                             {/* Edit Button */}
@@ -1081,7 +1135,7 @@ export const Tasks: React.FC = () => {
           onClose={() => setAddOpen(false)}
           onSave={async taskData => {
             try {
-              await taskService.addTask(taskData);
+              await taskService.addTask(taskData, user?.name);
               toast.success('HR task created successfully');
               setAddOpen(false);
               loadTasks(true);
@@ -1102,7 +1156,7 @@ export const Tasks: React.FC = () => {
           onClose={() => setEditTask(null)}
           onSave={async taskData => {
             try {
-              await taskService.updateTask(taskData as Task);
+              await taskService.updateTask(taskData as Task, user?.name);
               toast.success('HR task updated successfully');
               setEditTask(null);
               loadTasks(true);

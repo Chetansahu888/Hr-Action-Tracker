@@ -45,10 +45,10 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
     Boolean(task?.assignedBy && !assignerOptions.includes(task.assignedBy))
   );
   const [expectedDateTime, setExpectedDateTime] = useState<string>(
-    toLocalDatetimeInput(task?.expectedDate || task?.planned, 2.5)
+    toLocalDatetimeInput(task?.expectedDate || task?.committedDate || task?.dueDate, 2.5)
   );
   const [dueDateTime, setDueDateTime] = useState<string>(
-    toLocalDatetimeInput(task?.planned, 3.0)
+    toLocalDatetimeInput(task?.committedDate || task?.dueDate || task?.planned, 3.0)
   );
   const [saving, setSaving] = useState(false);
 
@@ -77,7 +77,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
       return;
     }
     if (!expectedDateTime) {
-      toast.error('Please set an Expected Date & Time');
+      toast.error('Please set an Expected Target Date & Time');
       return;
     }
     if (!dueDateTime) {
@@ -87,15 +87,17 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
 
     setSaving(true);
     try {
-      const plannedIso = new Date(dueDateTime).toISOString();
-      const expectedIso = new Date(expectedDateTime).toISOString();
+      const taskGivenDateIso = task?.planned || new Date().toISOString(); // Col A: Planned (Task Given Date)
+      const committedIso = new Date(dueDateTime).toISOString();            // Col H: Committed Due Date
+      const expectedIso = new Date(expectedDateTime).toISOString();        // Col G: Expected Target Date
       await onSave({
         ...(task || {}),
         problem: problem.trim(),
         doer: doer.join(', '),
         assignedBy: assignedBy.trim() || 'Management',
-        planned: plannedIso,
-        dueDate: plannedIso,
+        planned: taskGivenDateIso,
+        committedDate: committedIso,
+        dueDate: committedIso,
         expectedDate: expectedIso,
         status: task?.status || 'Pending',
       });
@@ -149,9 +151,11 @@ export const TaskModal: React.FC<TaskModalProps> = ({ title, task, doerOptions, 
         >
           <div>
             <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>{title}</h3>
-            <p style={{ fontSize: 12, color: '#64748b', margin: '3px 0 0' }}>
-              {task ? `Editing Task #${task.sno}` : 'Create a new action item with Expected & Due Date SLA targets'}
-            </p>
+            {task && (
+              <p style={{ fontSize: 12, color: '#64748b', margin: '3px 0 0' }}>
+                Editing Task #{task.sno}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}

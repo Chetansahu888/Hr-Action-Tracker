@@ -219,17 +219,17 @@ export const History: React.FC = () => {
   const stats = useMemo(() => {
     let statusChanges = 0;
     let edits = 0;
-    let created = 0;
+    let deletions = 0;
     userLogs.forEach(l => {
       if (l.action === 'STATUS_CHANGED') statusChanges++;
       else if (l.action === 'EDITED') edits++;
-      else if (l.action === 'CREATED') created++;
+      else if (l.action === 'DELETED') deletions++;
     });
     return {
       total: userLogs.length,
       statusChanges,
       edits,
-      created,
+      deletions,
     };
   }, [userLogs]);
 
@@ -247,35 +247,11 @@ export const History: React.FC = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, fontFamily: "'Inter', sans-serif" }}>
 
       {/* ─ Header ─ */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px', lineHeight: 1.2, margin: 0 }}>
-              Task Modifications & Audit History
-            </h1>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                padding: '3px 10px',
-                borderRadius: 99,
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#1d4ed8',
-              }}
-            >
-              <Clock size={12} color="#2563eb" />
-              30-Day Auto Retention
-            </div>
-          </div>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-            {isAdmin
-              ? 'Administrator Audit Trail — Showing modifications across all department tasks.'
-              : `Showing modification records and status transitions for tasks assigned to ${user?.name}.`}
-          </p>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px', lineHeight: 1.2, margin: 0 }}>
+            Task Modifications &amp; Audit History
+          </h1>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -309,7 +285,7 @@ export const History: React.FC = () => {
         <div style={{ ...cardStyle, padding: '14px 16px', borderColor: '#bfdbfe' }}>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#2563eb', lineHeight: 1 }}>{stats.total}</div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94a3b8', marginTop: 4 }}>
-            Total Logged Events
+            Total Modifications
           </div>
         </div>
 
@@ -323,14 +299,14 @@ export const History: React.FC = () => {
         <div style={{ ...cardStyle, padding: '14px 16px', borderColor: '#ddd6fe' }}>
           <div style={{ fontSize: 24, fontWeight: 900, color: '#7c3aed', lineHeight: 1 }}>{stats.edits}</div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94a3b8', marginTop: 4 }}>
-            Task Details Edits
+            Details Edits
           </div>
         </div>
 
-        <div style={{ ...cardStyle, padding: '14px 16px', borderColor: '#fed7aa' }}>
-          <div style={{ fontSize: 24, fontWeight: 900, color: '#ea580c', lineHeight: 1 }}>{stats.created}</div>
+        <div style={{ ...cardStyle, padding: '14px 16px', borderColor: '#fecaca' }}>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#dc2626', lineHeight: 1 }}>{stats.deletions}</div>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#94a3b8', marginTop: 4 }}>
-            New Tasks Added
+            Deleted Tasks
           </div>
         </div>
 
@@ -432,6 +408,9 @@ export const History: React.FC = () => {
                 <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 150 }}>
                   Doer(s)
                 </th>
+                <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', minWidth: 140 }}>
+                  Modified By
+                </th>
                 <th style={{ padding: '12px 18px', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap', width: 130 }}>
                   Action Type
                 </th>
@@ -450,14 +429,14 @@ export const History: React.FC = () => {
               {loading ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td colSpan={allowDeletion ? 7 : 6} style={{ padding: '16px 18px' }}>
+                    <td colSpan={allowDeletion ? 8 : 7} style={{ padding: '16px 18px' }}>
                       <div style={{ height: 20, background: '#f1f5f9', borderRadius: 6 }} />
                     </td>
                   </tr>
                 ))
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={allowDeletion ? 7 : 6} style={{ padding: '60px 24px', textAlign: 'center' }}>
+                  <td colSpan={allowDeletion ? 8 : 7} style={{ padding: '60px 24px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 48, height: 48, borderRadius: 14, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <HistoryIcon size={24} color="#94a3b8" />
@@ -477,6 +456,7 @@ export const History: React.FC = () => {
                   const IconComp = actCfg.icon;
                   const doerText = getLogDoer(log);
                   const doerNames = doerText.split(/[,/]/).map(d => d.trim()).filter(Boolean);
+                  const modUser = log.modifiedBy || 'Admin';
 
                   return (
                     <tr
@@ -568,6 +548,42 @@ export const History: React.FC = () => {
                               </span>
                             );
                           })}
+                        </div>
+                      </td>
+
+                      {/* Modified By */}
+                      <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '3px 10px',
+                            borderRadius: 99,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            fontSize: 12,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '50%',
+                              background: '#047857',
+                              color: '#fff',
+                              fontSize: 9,
+                              fontWeight: 800,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {modUser.charAt(0).toUpperCase()}
+                          </div>
+                          <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                            {modUser}
+                          </span>
                         </div>
                       </td>
 

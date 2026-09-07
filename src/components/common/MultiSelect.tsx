@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Check, ChevronDown, X, Search } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Check, ChevronDown, X, Search, CheckSquare, Square } from 'lucide-react';
 
 interface MultiSelectProps {
   options: string[];
@@ -24,7 +24,38 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [openUpward, setOpenUpward] = useState(false);
+  const [maxListHeight, setMaxListHeight] = useState(200);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Smart calculation for dropdown placement (Top vs Bottom)
+  const updatePlacement = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // If less than 230px space below and more space above, open upward
+    if (spaceBelow < 230 && spaceAbove > spaceBelow) {
+      setOpenUpward(true);
+      setMaxListHeight(Math.max(140, Math.min(220, spaceAbove - 60)));
+    } else {
+      setOpenUpward(false);
+      setMaxListHeight(Math.max(140, Math.min(220, spaceBelow - 60)));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePlacement();
+      window.addEventListener('resize', updatePlacement);
+      window.addEventListener('scroll', updatePlacement, true);
+    }
+    return () => {
+      window.removeEventListener('resize', updatePlacement);
+      window.removeEventListener('scroll', updatePlacement, true);
+    };
+  }, [isOpen, updatePlacement]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -55,12 +86,26 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
     onChange(selected.filter(item => item !== option));
   };
 
+  const handleSelectAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const combined = Array.from(new Set([...selected, ...filteredOptions]));
+    onChange(combined);
+  };
+
+  const handleClearAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange([]);
+  };
+
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', fontFamily: "'Inter', sans-serif" }}>
       
       {/* ── Trigger Box ──────────────────────────── */}
       <div
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          updatePlacement();
+          setIsOpen(!isOpen);
+        }}
         style={{
           minHeight: 44,
           padding: '6px 12px',
@@ -144,77 +189,138 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
           size={16}
           color="#64748b"
           style={{
-            transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transform: isOpen ? (openUpward ? 'rotate(0deg)' : 'rotate(180deg)') : (openUpward ? 'rotate(180deg)' : 'rotate(0deg)'),
             transition: 'transform 0.2s ease',
             flexShrink: 0,
           }}
         />
       </div>
 
-      {/* ── Dropdown Popover ─────────────────────── */}
+      {/* ── Dropdown Popover (Smart Upward/Downward Adjustable) ── */}
       {isOpen && (
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 6px)',
+            ...(openUpward
+              ? { bottom: 'calc(100% + 6px)', top: 'auto' }
+              : { top: 'calc(100% + 6px)', bottom: 'auto' }
+            ),
             left: 0,
             right: 0,
-            zIndex: 1000,
+            zIndex: 9999,
             backgroundColor: '#ffffff',
             borderRadius: 14,
             border: '1px solid #cbd5e1',
-            boxShadow: '0 12px 36px rgba(15,23,42,0.18), 0 4px 12px rgba(0,0,0,0.08)',
+            boxShadow: openUpward
+              ? '0 -12px 36px rgba(15,23,42,0.18), 0 -4px 12px rgba(0,0,0,0.08)'
+              : '0 12px 36px rgba(15,23,42,0.18), 0 4px 12px rgba(0,0,0,0.08)',
             overflow: 'hidden',
             animation: 'fadeIn 0.15s ease-out',
           }}
         >
-          {/* Search Box */}
+          {/* Search Box & Action Controls */}
           <div
             style={{
-              padding: '10px 12px',
+              padding: '8px 12px',
               borderBottom: '1px solid #e8ecf0',
               backgroundColor: '#f8fafc',
               display: 'flex',
-              alignItems: 'center',
-              gap: 8,
+              flexDirection: 'column',
+              gap: 6,
             }}
           >
-            <Search size={14} color="#94a3b8" />
-            <input
-              type="text"
-              autoFocus
-              placeholder="Search registered HR users..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: '100%',
-                border: 'none',
-                background: 'transparent',
-                fontSize: 13,
-                outline: 'none',
-                color: '#0f172a',
-                fontFamily: 'inherit',
-              }}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Search size={14} color="#94a3b8" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search registered HR users..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 style={{
-                  background: 'none',
+                  width: '100%',
                   border: 'none',
-                  cursor: 'pointer',
-                  color: '#94a3b8',
-                  padding: 2,
-                  display: 'flex',
+                  background: 'transparent',
+                  fontSize: 13,
+                  outline: 'none',
+                  color: '#0f172a',
+                  fontFamily: 'inherit',
                 }}
-              >
-                <X size={13} />
-              </button>
-            )}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#94a3b8',
+                    padding: 2,
+                    display: 'flex',
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Actions (Select All / Clear) */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4, borderTop: '1px dashed #e2e8f0' }}>
+              <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>
+                {selected.length} selected of {options.length}
+              </span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#2563eb',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3,
+                  }}
+                >
+                  <CheckSquare size={12} /> Select All
+                </button>
+                {selected.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: '#ef4444',
+                      cursor: 'pointer',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                    }}
+                  >
+                    <Square size={12} /> Clear
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
-          {/* Options List */}
-          <div style={{ maxHeight: 220, overflowY: 'auto', padding: '6px' }}>
+          {/* Options List (Adjustable scroll table) */}
+          <div
+            style={{
+              maxHeight: maxListHeight,
+              overflowY: 'auto',
+              padding: '6px',
+            }}
+          >
             {filteredOptions.length === 0 ? (
               <div style={{ padding: '16px 12px', textAlign: 'center', fontSize: 12, color: '#94a3b8' }}>
                 No registered user matching "{search}"
@@ -258,6 +364,7 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
+                          flexShrink: 0,
                         }}
                       >
                         {opt.charAt(0).toUpperCase()}

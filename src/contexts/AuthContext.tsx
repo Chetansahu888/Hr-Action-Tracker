@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, UserRole } from '../types/auth';
 import { DEFAULT_USERS } from '../types/auth';
+import { taskService } from '../services/taskService';
 
 interface AuthContextType {
   user: User | null;
@@ -45,6 +46,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (e) { /* ignore */ }
     return DEFAULT_USERS[0]; // Default to Admin
   });
+
+  // Fetch users from Google Sheet on startup
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const remoteUsers = await taskService.getUsers();
+        if (isMounted && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+          setUsers(remoteUsers);
+          localStorage.setItem(STORAGE_USERS_LIST_KEY, JSON.stringify(remoteUsers));
+        } else if (isMounted) {
+          // If sheet is empty, seed with DEFAULT_USERS
+          taskService.syncUsers(DEFAULT_USERS).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('Could not sync users from sheet on startup:', err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const saveUsersList = (newUsers: User[]) => {
     setUsers(newUsers);
@@ -119,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const updated = [...users, newUser];
     saveUsersList(updated);
+    taskService.saveUser(newUser).catch(err => console.warn('Failed to save user to sheet:', err));
     return { success: true };
   };
 
@@ -128,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user?.id === userData.id) {
       login(userData);
     }
+    taskService.saveUser(userData).catch(err => console.warn('Failed to update user in sheet:', err));
     return { success: true };
   };
 
@@ -137,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     const updated = users.filter(u => u.id !== userId);
     saveUsersList(updated);
+    taskService.deleteUser(userId).catch(err => console.warn('Failed to delete user in sheet:', err));
     return { success: true };
   };
 

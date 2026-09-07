@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Database, Bell, Shield, CheckCircle2, Lock, FileSpreadsheet,
@@ -19,15 +20,16 @@ const cardStyle: React.CSSProperties = {
 };
 
 const COLS = [
-  { col: 'A', name: 'Planned / Due Date', desc: 'Committed deadline date & time' },
-  { col: 'B', name: 'Actual', desc: 'Completion timestamp (auto on 100%)' },
-  { col: 'C', name: 'S.No.', desc: 'Unique sequential identifier' },
+  { col: 'A', name: 'Planned', desc: 'Task Assignment Date & Time (Task Dene ka time)' },
+  { col: 'B', name: 'Actual', desc: 'Task Completion Date & Time (100% Complete hone par auto)' },
+  { col: 'C', name: 'S. No.', desc: 'Unique sequential identifier (#1, #2...)' },
   { col: 'D', name: 'Problem / Task', desc: 'Task description / problem statement' },
-  { col: 'E', name: 'Name of Doer', desc: 'Comma-separated HR assignees' },
-  { col: 'F', name: 'Status', desc: 'Pending, 25%, 50%, 75%, 100%' },
-  { col: 'G', name: 'Weekly Review', desc: 'Auto SLA rating (⭐⭐⭐⭐⭐ - ⭐)' },
-  { col: 'H', name: 'Expected Date', desc: 'Task Assigner target goal date & time' },
-  { col: 'I', name: 'Assign By', desc: 'Task Assigner / Giver (from Master Sheet Col A)' },
+  { col: 'E', name: 'Assign By', desc: 'Task Assigner / Giver (from Master Tab Col A)' },
+  { col: 'F', name: 'Name Of Doer', desc: 'Assigned HR Member / Doer name (name-wise save)' },
+  { col: 'G', name: 'Expected Target Date & Time', desc: 'Task Assigner target goal deadline' },
+  { col: 'H', name: 'Committed Due Date & Tim', desc: 'Doer committed due deadline' },
+  { col: 'I', name: 'Status', desc: 'Pending, 25%, 50%, 75%, 100%' },
+  { col: 'J', name: 'Weekly Review', desc: 'Auto SLA Star Rating (⭐⭐⭐⭐⭐ to ⭐)' },
 ];
 
 export const Settings: React.FC = () => {
@@ -59,6 +61,7 @@ export const Settings: React.FC = () => {
   // Google Apps Script Web App API URL state
   const [gasApiUrl, setGasApiUrlState] = useState(taskService.getGasApiUrl());
   const [isTestingGas, setIsTestingGas] = useState(false);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; sheetName?: string } | null>(null);
 
   const handleSaveGasUrl = () => {
@@ -86,6 +89,22 @@ export const Settings: React.FC = () => {
       toast.error(err.message || 'Failed to connect to Google Apps Script');
     } finally {
       setIsTestingGas(false);
+    }
+  };
+
+  const handleSyncAllLocalTasks = async () => {
+    if (!gasApiUrl.trim()) {
+      toast.error('Please save and test your Google Sheet Web App URL first');
+      return;
+    }
+    setIsSyncingAll(true);
+    try {
+      const res = await taskService.syncAllLocalTasksToGas();
+      toast.success(res.message);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to sync tasks to Google Sheet');
+    } finally {
+      setIsSyncingAll(false);
     }
   };
 
@@ -187,7 +206,7 @@ export const Settings: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 880, fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%', fontFamily: "'Inter', sans-serif" }}>
 
       {/* Header */}
       <div>
