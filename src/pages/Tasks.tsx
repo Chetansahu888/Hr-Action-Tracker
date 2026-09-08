@@ -127,11 +127,25 @@ export const Tasks: React.FC = () => {
   useEffect(() => {
     autoRef.current = setInterval(() => {
       if (!document.hidden) loadTasks(true);
-    }, 60000);
+    }, 8000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadTasks(true);
+    };
+    const handleFocus = () => {
+      loadTasks(true);
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       if (autoRef.current) clearInterval(autoRef.current);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [loadTasks]);
+
 
   // Registered system users as doer options
   const doerOptions = useMemo(() => {

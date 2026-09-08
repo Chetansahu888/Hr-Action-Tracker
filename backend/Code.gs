@@ -35,6 +35,38 @@ const COL = {
 };
 
 /**
+ * Universal Formula-Safe Date Formatter for Google Sheets
+ * Format: "MM/dd/yyyy HH:mm:ss" (e.g. "09/08/2026 10:49:33")
+ */
+function formatFormulaDate_(dateObj) {
+  if (!dateObj) return '';
+  if (typeof dateObj === 'string') {
+    const trimmed = dateObj.trim();
+    if (!trimmed) return '';
+    if (/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      dateObj = parsed;
+    } else {
+      return trimmed;
+    }
+  }
+  try {
+    return Utilities.formatDate(dateObj, Session.getScriptTimeZone() || "GMT+5:30", "MM/dd/yyyy HH:mm:ss");
+  } catch (e) {
+    try {
+      const d = new Date(dateObj);
+      if (!isNaN(d.getTime())) {
+        return Utilities.formatDate(d, "GMT+5:30", "MM/dd/yyyy HH:mm:ss");
+      }
+    } catch (e2) {}
+    return String(dateObj);
+  }
+}
+
+/**
  * Serves pure JSON REST API for GET requests or serves HTML UI if accessed directly
  */
 function doGet(e) {
@@ -221,10 +253,10 @@ function getSheet() {
     }
   }
 
-  // 3. Look for first non-master sheet
+  // 3. Look for first tracker sheet (excluding Master, Login page, Audit History)
   for (let s of sheets) {
     const n = s.getName().trim().toLowerCase();
-    if (n !== 'master') {
+    if (n !== 'master' && !n.includes('login') && !n.includes('audit')) {
       return s;
     }
   }
