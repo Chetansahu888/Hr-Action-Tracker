@@ -1,4 +1,6 @@
+import { formatDateTimeFormulaSafe } from '../lib/utils';
 import type { Task, TaskStatus, TaskAuditLog, AuditChange, DashboardData } from '../types/task';
+
 
 const STORAGE_KEY = 'hr_tasks_storage';
 const STORAGE_AUDIT_KEY = 'hr_audit_logs_v2';
@@ -83,11 +85,11 @@ const INITIAL_TASKS: Task[] = [
   {
     rowIndex: 2,
     sno: 1,
-    planned: new Date(Date.now() - 6 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 5 * 86400000).toISOString(),
-    committedDate: new Date(Date.now() - 4 * 86400000).toISOString(),
-    dueDate: new Date(Date.now() - 4 * 86400000).toISOString(),
-    actual: new Date(Date.now() - 4 * 86400000).toISOString(),
+    planned: formatDateTimeFormulaSafe(new Date(Date.now() - 6 * 86400000)),
+    expectedDate: formatDateTimeFormulaSafe(new Date(Date.now() - 5 * 86400000)),
+    committedDate: formatDateTimeFormulaSafe(new Date(Date.now() - 4 * 86400000)),
+    dueDate: formatDateTimeFormulaSafe(new Date(Date.now() - 4 * 86400000)),
+    actual: formatDateTimeFormulaSafe(new Date(Date.now() - 4 * 86400000)),
     problem: 'Process Monthly Attendance and Leave Reconciliation for Production Unit',
     doer: 'Bhupendra',
     assignedBy: 'Management',
@@ -97,10 +99,10 @@ const INITIAL_TASKS: Task[] = [
   {
     rowIndex: 3,
     sno: 2,
-    planned: new Date(Date.now() - 5 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 3 * 86400000).toISOString(),
-    committedDate: new Date(Date.now() - 2 * 86400000).toISOString(),
-    dueDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+    planned: formatDateTimeFormulaSafe(new Date(Date.now() - 5 * 86400000)),
+    expectedDate: formatDateTimeFormulaSafe(new Date(Date.now() - 3 * 86400000)),
+    committedDate: formatDateTimeFormulaSafe(new Date(Date.now() - 2 * 86400000)),
+    dueDate: formatDateTimeFormulaSafe(new Date(Date.now() - 2 * 86400000)),
     actual: '',
     problem: 'Conduct Background Verification for 12 newly joined Warehouse Associates',
     doer: 'Deepak',
@@ -111,10 +113,10 @@ const INITIAL_TASKS: Task[] = [
   {
     rowIndex: 4,
     sno: 3,
-    planned: new Date(Date.now() - 4 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() - 2 * 86400000).toISOString(),
-    committedDate: new Date(Date.now() - 1 * 86400000).toISOString(),
-    dueDate: new Date(Date.now() - 1 * 86400000).toISOString(),
+    planned: formatDateTimeFormulaSafe(new Date(Date.now() - 4 * 86400000)),
+    expectedDate: formatDateTimeFormulaSafe(new Date(Date.now() - 2 * 86400000)),
+    committedDate: formatDateTimeFormulaSafe(new Date(Date.now() - 1 * 86400000)),
+    dueDate: formatDateTimeFormulaSafe(new Date(Date.now() - 1 * 86400000)),
     actual: '',
     problem: 'Coordinate Annual Statutory Compliance Audit with external auditor',
     doer: 'MD Alaudin',
@@ -125,10 +127,10 @@ const INITIAL_TASKS: Task[] = [
   {
     rowIndex: 5,
     sno: 4,
-    planned: new Date(Date.now() - 3 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() + 1 * 86400000).toISOString(),
-    committedDate: new Date(Date.now() + 2 * 86400000).toISOString(),
-    dueDate: new Date(Date.now() + 2 * 86400000).toISOString(),
+    planned: formatDateTimeFormulaSafe(new Date(Date.now() - 3 * 86400000)),
+    expectedDate: formatDateTimeFormulaSafe(new Date(Date.now() + 1 * 86400000)),
+    committedDate: formatDateTimeFormulaSafe(new Date(Date.now() + 2 * 86400000)),
+    dueDate: formatDateTimeFormulaSafe(new Date(Date.now() + 2 * 86400000)),
     actual: '',
     problem: 'Prepare Employee ESIC & PF monthly remittance challan report',
     doer: 'Deepak',
@@ -139,10 +141,10 @@ const INITIAL_TASKS: Task[] = [
   {
     rowIndex: 6,
     sno: 5,
-    planned: new Date(Date.now() - 2 * 86400000).toISOString(),
-    expectedDate: new Date(Date.now() + 2 * 86400000).toISOString(),
-    committedDate: new Date(Date.now() + 3 * 86400000).toISOString(),
-    dueDate: new Date(Date.now() + 3 * 86400000).toISOString(),
+    planned: formatDateTimeFormulaSafe(new Date(Date.now() - 2 * 86400000)),
+    expectedDate: formatDateTimeFormulaSafe(new Date(Date.now() + 2 * 86400000)),
+    committedDate: formatDateTimeFormulaSafe(new Date(Date.now() + 3 * 86400000)),
+    dueDate: formatDateTimeFormulaSafe(new Date(Date.now() + 3 * 86400000)),
     actual: '',
     problem: 'Schedule Second Round Technical Interviews for Senior DevOps Engineer position',
     doer: 'Bhupendra, Deepak',
@@ -508,9 +510,9 @@ export const taskService = {
   addTask: async (task: Partial<Task>, modifiedBy?: string): Promise<{ success: boolean; sno: number }> => {
     let nextSno = mockTasks.length > 0 ? Math.max(...mockTasks.map(t => t.sno)) + 1 : 1;
 
-    const planned = task.planned || new Date().toISOString(); // Task Given Date (Col A)
-    const expectedDate = task.expectedDate || '';
-    const committedDate = task.committedDate || task.dueDate || planned;
+    const planned = task.planned ? formatDateTimeFormulaSafe(task.planned) : formatDateTimeFormulaSafe(new Date());
+    const expectedDate = task.expectedDate ? formatDateTimeFormulaSafe(task.expectedDate) : '';
+    const committedDate = task.committedDate ? formatDateTimeFormulaSafe(task.committedDate) : (task.dueDate ? formatDateTimeFormulaSafe(task.dueDate) : planned);
     const assignedBy = task.assignedBy || 'Management';
     const doer = task.doer || '';
     const status = task.status || 'Pending';
@@ -569,7 +571,7 @@ export const taskService = {
       review: '',
     };
     if (newTask.status === 'Complete 100%') {
-      newTask.actual = new Date().toISOString();
+      newTask.actual = formatDateTimeFormulaSafe(new Date());
       newTask.review = calculateReview(committedDate || planned, newTask.actual, expectedDate);
     }
     mockTasks = [newTask, ...mockTasks.filter(t => t.sno !== nextSno)];
@@ -579,10 +581,11 @@ export const taskService = {
   },
 
   updateTask: async (task: Task, modifiedBy?: string): Promise<{ success: boolean }> => {
-    const old = mockTasks.find(t => t.sno === task.sno);
+    const index = mockTasks.findIndex(t => t.sno === task.sno);
+    const existing = index !== -1 ? mockTasks[index] : undefined;
+    const old = existing || mockTasks.find(t => t.sno === task.sno);
     const userStr = modifiedBy || 'Admin';
 
-    // Compute diffs
     const changes: AuditChange[] = [];
     if (old) {
       if (old.problem !== task.problem) {
@@ -601,28 +604,12 @@ export const taskService = {
           newValue: task.doer || 'Unassigned',
         });
       }
-      if (task.assignedBy !== undefined && old.assignedBy !== task.assignedBy) {
+      if (old.assignedBy !== task.assignedBy) {
         changes.push({
           field: 'assignedBy',
           fieldLabel: 'Assign By',
           oldValue: old.assignedBy || '—',
           newValue: task.assignedBy || '—',
-        });
-      }
-      if (task.expectedDate && old.expectedDate !== task.expectedDate) {
-        changes.push({
-          field: 'expectedDate',
-          fieldLabel: 'Expected Target Date & Time',
-          oldValue: old.expectedDate || '—',
-          newValue: task.expectedDate || '—',
-        });
-      }
-      if (task.committedDate && old.committedDate !== task.committedDate) {
-        changes.push({
-          field: 'committedDate',
-          fieldLabel: 'Committed Due Date & Tim',
-          oldValue: old.committedDate || '—',
-          newValue: task.committedDate || '—',
         });
       }
       if (old.status !== task.status) {
@@ -633,34 +620,45 @@ export const taskService = {
           newValue: task.status,
         });
       }
-    } else {
-      changes.push({
-        field: 'problem',
-        fieldLabel: 'Problem Statement',
-        oldValue: 'Previous task',
-        newValue: task.problem || '—',
-      });
-      changes.push({
-        field: 'status',
-        fieldLabel: 'Status',
-        oldValue: 'Pending',
-        newValue: task.status || 'Pending',
-      });
+      if (task.expectedDate && old.expectedDate !== task.expectedDate) {
+        changes.push({
+          field: 'expectedDate',
+          fieldLabel: 'Expected Target Date',
+          oldValue: old.expectedDate || '—',
+          newValue: task.expectedDate,
+        });
+      }
+      if (task.committedDate && old.committedDate !== task.committedDate) {
+        changes.push({
+          field: 'committedDate',
+          fieldLabel: 'Committed Due Date',
+          oldValue: old.committedDate || '—',
+          newValue: task.committedDate,
+        });
+      }
     }
 
     if (changes.length > 0) {
-      logAudit(task.sno, task.problem, task.doer, 'EDITED', changes, userStr);
+      logAudit(task.sno, task.problem, task.doer || '', 'EDITED', changes, userStr);
     }
+
+    const payloadTask: Task = {
+      ...task,
+      planned: task.planned ? formatDateTimeFormulaSafe(task.planned) : (existing?.planned || formatDateTimeFormulaSafe(new Date())),
+      expectedDate: task.expectedDate ? formatDateTimeFormulaSafe(task.expectedDate) : '',
+      committedDate: task.committedDate ? formatDateTimeFormulaSafe(task.committedDate) : (task.dueDate ? formatDateTimeFormulaSafe(task.dueDate) : ''),
+    };
+
 
     if (isGAS) {
       try {
-        await gasCall('updateTask', { ...task, modifiedBy: userStr });
+        await gasCall('updateTask', payloadTask, userStr);
       } catch (err) {
         console.warn('updateTask GAS error:', err);
       }
     } else if (getGasApiUrl()) {
       try {
-        await callGasApi('updateTask', { task: { ...task, modifiedBy: userStr } });
+        await callGasApi('updateTask', { task: { ...payloadTask, modifiedBy: userStr } });
       } catch (err) {
         console.warn('updateTask Web App API error:', err);
       }
@@ -668,13 +666,12 @@ export const taskService = {
       await delay(300);
     }
 
-    const index = mockTasks.findIndex(t => t.sno === task.sno);
-    if (index !== -1) {
-      const existing = mockTasks[index];
-      const updated: Task = { ...existing, ...task };
+    if (index !== -1 && existing) {
+      const updated: Task = { ...existing, ...payloadTask };
+
       const deadline = updated.committedDate || updated.dueDate || updated.planned;
       if (existing.status !== 'Complete 100%' && task.status === 'Complete 100%') {
-        updated.actual = new Date().toISOString();
+        updated.actual = formatDateTimeFormulaSafe(new Date());
         updated.review = calculateReview(deadline, updated.actual, updated.expectedDate);
       } else if (existing.status === 'Complete 100%' && task.status !== 'Complete 100%') {
         updated.actual = '';
@@ -683,6 +680,7 @@ export const taskService = {
       mockTasks[index] = updated;
       saveStoredTasks(mockTasks);
     }
+
 
     return { success: true };
   },
@@ -699,8 +697,8 @@ export const taskService = {
     ];
 
     if (oldStatus !== 'Complete 100%' && status === 'Complete 100%') {
-      const deadline = existing?.committedDate || existing?.dueDate || existing?.planned || new Date().toISOString();
-      const actual = new Date().toISOString();
+      const deadline = existing?.committedDate || existing?.dueDate || existing?.planned || formatDateTimeFormulaSafe(new Date());
+      const actual = formatDateTimeFormulaSafe(new Date());
       const review = calculateReview(deadline, actual, existing?.expectedDate);
       changes.push({
         field: 'actual',
@@ -746,7 +744,7 @@ export const taskService = {
       const updated = { ...mockTasks[index], status };
       const deadline = updated.committedDate || updated.dueDate || updated.planned;
       if (oldStatus !== 'Complete 100%' && status === 'Complete 100%') {
-        updated.actual = new Date().toISOString();
+        updated.actual = formatDateTimeFormulaSafe(new Date());
         updated.review = calculateReview(deadline, updated.actual, updated.expectedDate);
       } else if (oldStatus === 'Complete 100%' && status !== 'Complete 100%') {
         updated.actual = '';

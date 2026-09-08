@@ -522,11 +522,11 @@ function addTask(task) {
   const rowData = new Array(maxCol).fill('');
   
   // Col A: Planned (Task Given Date)
-  rowData[colMap.PLANNED - 1] = plannedDate;
+  rowData[colMap.PLANNED - 1] = formatFormulaDate_(plannedDate);
   
   // Col B: Actual (Completion Date - empty on creation unless 100%)
   if (status === 'Complete 100%') {
-    rowData[colMap.ACTUAL - 1] = new Date();
+    rowData[colMap.ACTUAL - 1] = formatFormulaDate_(new Date());
   } else {
     rowData[colMap.ACTUAL - 1] = '';
   }
@@ -544,10 +544,10 @@ function addTask(task) {
   if (colMap.DOER) rowData[colMap.DOER - 1] = doer;
   
   // Col G: Expected Target Date & Time
-  if (colMap.EXPECTED) rowData[colMap.EXPECTED - 1] = expectedDate;
+  if (colMap.EXPECTED) rowData[colMap.EXPECTED - 1] = expectedDate ? formatFormulaDate_(expectedDate) : '';
 
   // Col H: Committed Due Date & Tim
-  if (colMap.COMMITTED) rowData[colMap.COMMITTED - 1] = committedDate;
+  if (colMap.COMMITTED) rowData[colMap.COMMITTED - 1] = committedDate ? formatFormulaDate_(committedDate) : '';
 
   // Col I: Status
   if (colMap.STATUS) rowData[colMap.STATUS - 1] = status;
@@ -593,7 +593,7 @@ function updateTask(task) {
   if (task.planned) {
     try {
       const parsed = new Date(task.planned);
-      if (!isNaN(parsed.getTime())) sheet.getRange(rowIndex, colMap.PLANNED).setValue(parsed);
+      if (!isNaN(parsed.getTime())) sheet.getRange(rowIndex, colMap.PLANNED).setValue(formatFormulaDate_(parsed));
     } catch(e) {}
   }
 
@@ -601,7 +601,7 @@ function updateTask(task) {
   if (task.expectedDate && colMap.EXPECTED) {
     try {
       const parsed = new Date(task.expectedDate);
-      if (!isNaN(parsed.getTime())) sheet.getRange(rowIndex, colMap.EXPECTED).setValue(parsed);
+      if (!isNaN(parsed.getTime())) sheet.getRange(rowIndex, colMap.EXPECTED).setValue(formatFormulaDate_(parsed));
     } catch(e) {}
   }
 
@@ -610,7 +610,7 @@ function updateTask(task) {
   if (dueVal && colMap.COMMITTED) {
     try {
       const parsed = new Date(dueVal);
-      if (!isNaN(parsed.getTime())) sheet.getRange(rowIndex, colMap.COMMITTED).setValue(parsed);
+      if (!isNaN(parsed.getTime())) sheet.getRange(rowIndex, colMap.COMMITTED).setValue(formatFormulaDate_(parsed));
     } catch(e) {}
   }
 
@@ -735,11 +735,11 @@ function formatCleanChangesText_(action, changes, problem) {
     changes.forEach(function(c) {
       if (c.newValue && c.newValue !== '—') {
         let val = c.newValue;
-        if (typeof val === 'string' && val.includes('T') && val.includes('Z')) {
+        if (typeof val === 'string' && (val.includes('T') || val.includes('-'))) {
           try {
             const d = new Date(val);
             if (!isNaN(d.getTime())) {
-              val = Utilities.formatDate(d, Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a");
+              val = formatFormulaDate_(d);
             }
           } catch(e) {}
         }
@@ -753,16 +753,16 @@ function formatCleanChangesText_(action, changes, problem) {
   changes.forEach(function(c) {
     let oldVal = c.oldValue || '—';
     let newVal = c.newValue || '—';
-    if (typeof oldVal === 'string' && oldVal.includes('T') && oldVal.includes('Z')) {
+    if (typeof oldVal === 'string' && (oldVal.includes('T') || oldVal.includes('-'))) {
       try {
         const d = new Date(oldVal);
-        if (!isNaN(d.getTime())) oldVal = Utilities.formatDate(d, Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a");
+        if (!isNaN(d.getTime())) oldVal = formatFormulaDate_(d);
       } catch(e) {}
     }
-    if (typeof newVal === 'string' && newVal.includes('T') && newVal.includes('Z')) {
+    if (typeof newVal === 'string' && (newVal.includes('T') || newVal.includes('-'))) {
       try {
         const d = new Date(newVal);
-        if (!isNaN(d.getTime())) newVal = Utilities.formatDate(d, Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a");
+        if (!isNaN(d.getTime())) newVal = formatFormulaDate_(d);
       } catch(e) {}
     }
     diffs.push(c.fieldLabel + ': "' + oldVal + '" ➔ "' + newVal + '"');
@@ -823,7 +823,7 @@ function getAuditLogs() {
       const row = data[i];
       let ts = '';
       try {
-        ts = row[0] ? new Date(row[0]).toISOString() : '';
+        ts = row[0] ? formatFormulaDate_(row[0]) : '';
       } catch (e) {
         ts = String(row[0] || '');
       }
@@ -888,7 +888,7 @@ function logAuditEntry_(taskSno, problem, doer, action, changes, modifiedBy) {
 
     const logId = 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
     const now = new Date();
-    const formattedDate = Utilities.formatDate(now, Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a");
+    const formattedDate = formatFormulaDate_(now);
     const cleanDetails = formatCleanChangesText_(action, changes, problem);
     const userStr = String(modifiedBy || 'Admin').trim();
 
@@ -1048,7 +1048,7 @@ function handleSheetEdit(e) {
 function handleActualTimestamp_(sheet, rowIndex, isComplete) {
   const colMap = getColumnMap_(sheet);
   if (isComplete) {
-    const actualDate = new Date();
+    const actualDate = formatFormulaDate_(new Date());
     sheet.getRange(rowIndex, colMap.ACTUAL).setValue(actualDate);
     computeWeeklyReview_(sheet, rowIndex);
   } else {
@@ -1146,7 +1146,7 @@ function sendTelegramNotification(sno, problem, doer, plannedDate) {
 *S.No.:* #${sno}
 *Task:* ${problem}
 *Doer(s):* ${doer}
-*Assigned On:* ${plannedDate.toLocaleDateString()}
+*Assigned On:* ${formatFormulaDate_(plannedDate)}
 *Expected TAT:* 2.5 days
   `.trim();
   
@@ -1178,16 +1178,25 @@ function sendTelegramNotification(sno, problem, doer, plannedDate) {
  */
 
 /**
- * Returns or initializes the 'Login page' Google Sheet tab
+ * Returns or initializes the 'Login page' Google Sheet tab (7-Column Schema)
+ * Col A: User ID
+ * Col B: Username
+ * Col C: Full Name
+ * Col D: Role
+ * Col E: Designation / Title
+ * Col F: Password
+ * Col G: Created Date
  */
 function getLoginSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss) return null;
   let sheet = ss.getSheetByName('Login page') || ss.getSheetByName('Login Page') || ss.getSheetByName('login page') || ss.getSheetByName('Users');
+  
+  const headers = [['User ID', 'Username', 'Full Name', 'Role', 'Designation / Title', 'Password', 'Created Date']];
+  
   if (!sheet) {
     sheet = ss.insertSheet('Login page');
-    const headers = [['User ID', 'Username', 'Full Name', 'Role', 'Designation / Title', 'Password', 'Avatar Color', 'Created Date']];
-    sheet.getRange(1, 1, 1, 8).setValues(headers)
+    sheet.getRange(1, 1, 1, 7).setValues(headers)
       .setBackground('#0d1b2e')
       .setFontColor('#ffffff')
       .setFontWeight('bold')
@@ -1201,24 +1210,60 @@ function getLoginSheet_() {
     sheet.setColumnWidth(4, 110); // Role
     sheet.setColumnWidth(5, 230); // Designation
     sheet.setColumnWidth(6, 130); // Password
-    sheet.setColumnWidth(7, 120); // Avatar Color
-    sheet.setColumnWidth(8, 170); // Created Date
-    
-    // Auto populate default system accounts
+    sheet.setColumnWidth(7, 170); // Created Date
+  } else {
+    // If existing sheet has 'Avatar Color' column, auto-remove it to keep clean 7-column schema
+    try {
+      const lastCol = sheet.getLastColumn();
+      if (lastCol > 0) {
+        const headerRow = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+        for (let c = headerRow.length - 1; c >= 0; c--) {
+          const colName = String(headerRow[c] || '').toLowerCase();
+          if (colName.includes('avatar')) {
+            sheet.deleteColumn(c + 1);
+          }
+        }
+      }
+    } catch (cleanErr) {
+      console.warn('Avatar Color cleanup error:', cleanErr);
+    }
+  }
+
+  // If sheet is empty (only header row or 0 rows), auto populate default system accounts!
+  if (sheet.getLastRow() <= 1) {
+    if (sheet.getLastRow() === 0) {
+      sheet.getRange(1, 1, 1, 7).setValues(headers)
+        .setBackground('#0d1b2e')
+        .setFontColor('#ffffff')
+        .setFontWeight('bold')
+        .setFontFamily('Arial')
+        .setHorizontalAlignment('center')
+        .setVerticalAlignment('middle');
+      sheet.setFrozenRows(1);
+    }
     const defaultData = [
-      ['admin', 'Admin', 'Admin', 'admin', 'System Administrator (Full Access)', '1234', '#2563eb', Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a")],
-      ['user-1', 'Deepak', 'Deepak', 'user', 'HR Executive', '1234', '#3b82f6', Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a")],
-      ['user-2', 'Bhupendra', 'Bhupendra', 'user', 'HR Operations Lead', '1234', '#8b5cf6', Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a")],
-      ['user-3', 'MD Alaudin', 'MD Alaudin', 'user', 'HR Specialist', '1234', '#10b981', Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a")]
+      ['admin', 'Admin', 'Admin', 'admin', 'System Administrator (Full Access)', '1234', formatFormulaDate_(new Date())],
+      ['user-1', 'Deepak', 'Deepak', 'user', 'HR Executive', '1234', formatFormulaDate_(new Date())],
+      ['user-2', 'Bhupendra', 'Bhupendra', 'user', 'HR Operations Lead', '1234', formatFormulaDate_(new Date())],
+      ['user-3', 'MD Alaudin', 'MD Alaudin', 'user', 'HR Specialist', '1234', formatFormulaDate_(new Date())]
     ];
-    sheet.getRange(2, 1, defaultData.length, 8).setValues(defaultData);
+    sheet.getRange(2, 1, defaultData.length, 7).setValues(defaultData);
     SpreadsheetApp.flush();
   }
   return sheet;
 }
 
 /**
- * Fetches all system users from the 'Login page' sheet
+ * Manual helper to initialize or re-populate Login page accounts in Google Sheet
+ */
+function initLoginSheet() {
+  const sheet = getLoginSheet_();
+  return { success: true, rows: sheet ? sheet.getLastRow() : 0 };
+}
+
+
+/**
+ * Fetches all system users from the 'Login page' sheet (7 columns)
  */
 function getUsers_() {
   try {
@@ -1228,24 +1273,32 @@ function getUsers_() {
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1) return [];
     
-    const data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    const lastCol = Math.max(sheet.getLastColumn(), 7);
+    const data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
     const users = [];
+    
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const id = String(row[0] || ('user-' + (i + 1)));
+      const id = String(row[0] || ('user-' + (i + 1))).trim();
       const username = String(row[1] || '').trim();
       if (!username) continue;
+      
+      const roleStr = String(row[3] || 'user').toLowerCase().trim();
+      const role = (roleStr === 'admin' || roleStr.includes('admin')) ? 'admin' : 'user';
+      const name = String(row[2] || username).trim();
+      const title = String(row[4] || (role === 'admin' ? 'System Administrator' : 'HR Team Member')).trim();
+      const password = String(row[5] || '1234').trim();
+      const createdAt = String(row[6] || '');
       
       users.push({
         id: id,
         username: username,
-        name: String(row[2] || username).trim(),
-        role: String(row[3] || 'user').toLowerCase() === 'admin' ? 'admin' : 'user',
-        title: String(row[4] || ''),
-        password: String(row[5] || '1234'),
+        name: name,
+        role: role,
+        title: title,
+        password: password,
         email: username.toLowerCase().replace(/\s+/g, '.') + '@hr-dept.internal',
-        avatarBg: String(row[6] || '#2563eb'),
-        createdAt: String(row[7] || '')
+        createdAt: createdAt
       });
     }
     return users;
@@ -1256,28 +1309,27 @@ function getUsers_() {
 }
 
 /**
- * Saves or updates a user in the 'Login page' sheet
+ * Saves or updates a user in the 'Login page' sheet (7 columns)
  */
 function saveUser_(userData) {
   try {
     const sheet = getLoginSheet_();
     if (!sheet) throw new Error("Login page sheet not found");
     
-    const userId = userData.id || ('user-' + Date.now());
+    const userId = String(userData.id || ('user-' + Date.now())).trim();
     const username = String(userData.username || userData.name || '').trim();
     const name = String(userData.name || username).trim();
-    const role = String(userData.role || 'user').toLowerCase();
-    const title = String(userData.title || '');
-    const password = String(userData.password || '1234');
-    const avatarBg = String(userData.avatarBg || '#2563eb');
-    const createdDate = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a");
+    const role = String(userData.role || 'user').toLowerCase().includes('admin') ? 'admin' : 'user';
+    const title = String(userData.title || '').trim();
+    const password = String(userData.password || '1234').trim();
+    const createdDate = formatFormulaDate_(userData.createdAt || new Date());
     
     const lastRow = sheet.getLastRow();
     let rowIndex = -1;
     if (lastRow > 1) {
       const ids = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
       for (let i = 0; i < ids.length; i++) {
-        if (String(ids[i][0]) === userId || String(ids[i][1]).toLowerCase() === username.toLowerCase()) {
+        if (String(ids[i][0]).toLowerCase() === userId.toLowerCase() || String(ids[i][1]).toLowerCase() === username.toLowerCase()) {
           rowIndex = i + 2;
           break;
         }
@@ -1285,12 +1337,23 @@ function saveUser_(userData) {
     }
     
     if (rowIndex > 1) {
-      sheet.getRange(rowIndex, 1, 1, 7).setValues([[userId, username, name, role, title, password, avatarBg]]);
+      sheet.getRange(rowIndex, 1, 1, 6).setValues([[userId, username, name, role, title, password]]);
     } else {
-      sheet.appendRow([userId, username, name, role, title, password, avatarBg, createdDate]);
+      sheet.appendRow([userId, username, name, role, title, password, createdDate]);
     }
     SpreadsheetApp.flush();
-    return { success: true, user: { id: userId, username, name, role, title, password, avatarBg } };
+    return { 
+      success: true, 
+      user: { 
+        id: userId, 
+        username: username, 
+        name: name, 
+        role: role, 
+        title: title, 
+        password: password, 
+        createdAt: createdDate 
+      } 
+    };
   } catch (e) {
     console.error('saveUser_ error:', e);
     return { success: false, error: e.toString() };
@@ -1310,7 +1373,7 @@ function deleteUser_(userId) {
     
     const ids = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
     for (let i = 0; i < ids.length; i++) {
-      if (String(ids[i][0]) === String(userId)) {
+      if (String(ids[i][0]).toLowerCase() === String(userId).toLowerCase()) {
         sheet.deleteRow(i + 2);
         SpreadsheetApp.flush();
         return { success: true };
@@ -1324,7 +1387,7 @@ function deleteUser_(userId) {
 }
 
 /**
- * Syncs a full list of users to the 'Login page' sheet
+ * Syncs a full list of users to the 'Login page' sheet (7 columns)
  */
 function syncUsers_(usersList) {
   try {
@@ -1340,16 +1403,15 @@ function syncUsers_(usersList) {
         u.id || ('user-' + Date.now()),
         u.username || u.name || '',
         u.name || u.username || '',
-        u.role || 'user',
+        String(u.role || 'user').toLowerCase().includes('admin') ? 'admin' : 'user',
         u.title || '',
         u.password || '1234',
-        u.avatarBg || '#2563eb',
-        Utilities.formatDate(new Date(), Session.getScriptTimeZone() || "GMT+5:30", "dd MMM yyyy, hh:mm a")
+        formatFormulaDate_(u.createdAt || new Date())
       ];
     });
     
     if (rows.length > 0) {
-      sheet.getRange(2, 1, rows.length, 8).setValues(rows);
+      sheet.getRange(2, 1, rows.length, 7).setValues(rows);
       SpreadsheetApp.flush();
     }
     return { success: true, count: rows.length };

@@ -1,15 +1,19 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { User, UserRole } from '../types/auth';
-import { DEFAULT_USERS } from '../types/auth';
+import { DEFAULT_USERS, getUserAvatarBg } from '../types/auth';
 import { taskService } from '../services/taskService';
+import { formatDateTimeFormulaSafe } from '../lib/utils';
+
 
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
   users: User[];
+  isSyncingUsers: boolean;
   login: (user: User) => void;
-  loginWithCredentials: (username: string, password: string) => { success: boolean; error?: string; user?: User };
+  loginWithCredentials: (username: string, password: string) => Promise<{ success: boolean; error?: string; user?: User }>;
   logout: () => void;
+  refreshUsers: () => Promise<User[]>;
   addUser: (userData: { username: string; name: string; password?: string; role: UserRole; title?: string }) => { success: boolean; error?: string };
   updateUser: (userData: User) => { success: boolean; error?: string };
   deleteUser: (userId: string) => { success: boolean; error?: string };
@@ -21,78 +25,208 @@ interface AuthContextType {
 const STORAGE_AUTH_USER_KEY = 'hr_tracker_auth_user_v3';
 const STORAGE_USERS_LIST_KEY = 'hr_tracker_users_list_v3';
 
-const AVATAR_COLORS = ['#2563eb', '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Load managed users list
+  const [isSyncingUsers, setIsSyncingUsers] = useState<boolean>(false);
+
+  // Load managed users list with consistent avatarBg
   const [users, setUsers] = useState<User[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_USERS_LIST_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((u: any) => ({
+            ...u,
+            avatarBg: getUserAvatarBg(u),
+          }));
+        }
       }
-    } catch (e) { /* ignore */ }
-    return DEFAULT_USERS;
+    } catch { /* ignore */ }
+    return DEFAULT_USERS.map(u => ({ ...u, avatarBg: getUserAvatarBg(u) }));
   });
 
   // Load currently logged in user
   const [user, setUser] = useState<User | null>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_AUTH_USER_KEY);
-      if (stored) return JSON.parse(stored);
-    } catch (e) { /* ignore */ }
-    return DEFAULT_USERS[0]; // Default to Admin
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.id) {
+          return {
+            ...parsed,
+            avatarBg: getUserAvatarBg(parsed),
+          };
+        }
+      }
+    } catch { /* ignore */ }
+    return { ...DEFAULT_USERS[0], avatarBg: getUserAvatarBg(DEFAULT_USERS[0]) }; // Default to Admin
   });
 
-  // Fetch users from Google Sheet on startup
+  const userRef = useRef<User | null>(user);
   useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const remoteUsers = await taskService.getUsers();
-        if (isMounted && Array.isArray(remoteUsers) && remoteUsers.length > 0) {
-          setUsers(remoteUsers);
-          localStorage.setItem(STORAGE_USERS_LIST_KEY, JSON.stringify(remoteUsers));
-        } else if (isMounted) {
-          // If sheet is empty, seed with DEFAULT_USERS
-          taskService.syncUsers(DEFAULT_USERS).catch(() => {});
-        }
-      } catch (err) {
-        console.warn('Could not sync users from sheet on startup:', err);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
+    userRef.current = user;
+  }, [user]);
+
+  const saveUsersList = useCallback((newUsers: User[]) => {
+    const prepared = newUsers.map(u => ({
+      ...u,
+      avatarBg: getUserAvatarBg(u),
+    }));
+    setUsers(prepared);
+    try {
+      localStorage.setItem(STORAGE_USERS_LIST_KEY, JSON.stringify(prepared));
+    } catch { /* ignore */ }
   }, []);
 
-  const saveUsersList = (newUsers: User[]) => {
-    setUsers(newUsers);
+  // Fetch users from Google Sheet and update state
+  const refreshUsers = useCallback(async (): Promise<User[]> => {
     try {
-      localStorage.setItem(STORAGE_USERS_LIST_KEY, JSON.stringify(newUsers));
-    } catch (e) { /* ignore */ }
-  };
+      setIsSyncingUsers(true);
+      const remoteUsers = await taskService.getUsers();
+      if (Array.isArray(remoteUsers) && remoteUsers.length > 0) {
+        const preparedUsers: User[] = remoteUsers.map((u: any) => ({
+          id: String(u.id || ('user-' + Date.now())),
+          username: String(u.username || u.name || '').trim(),
+          name: String(u.name || u.username || '').trim(),
+          password: String(u.password || '1234'),
+          role: (String(u.role || 'user').toLowerCase().includes('admin') ? 'admin' : 'user') as UserRole,
+          email: u.email || `${String(u.username || u.name || '').toLowerCase().replace(/\s+/g, '.')}@hr-dept.internal`,
+          title: String(u.title || (String(u.role || 'user').toLowerCase().includes('admin') ? 'System Administrator' : 'HR Team Member')),
+          avatarBg: getUserAvatarBg(u),
+          createdAt: u.createdAt || '',
+        }));
+
+        setUsers(preparedUsers);
+        try {
+          localStorage.setItem(STORAGE_USERS_LIST_KEY, JSON.stringify(preparedUsers));
+        } catch { /* ignore */ }
+
+        // If currently logged in user is updated in Google Sheet, sync changes to active session!
+        const currentUser = userRef.current;
+        if (currentUser) {
+          const matchedRemote = preparedUsers.find(
+            ru => ru.id.toLowerCase() === currentUser.id.toLowerCase() ||
+                  ru.username.toLowerCase() === currentUser.username.toLowerCase()
+          );
+
+          if (matchedRemote) {
+            const hasChanged = 
+              matchedRemote.name !== currentUser.name ||
+              matchedRemote.role !== currentUser.role ||
+              matchedRemote.title !== currentUser.title ||
+              matchedRemote.password !== currentUser.password;
+
+            if (hasChanged) {
+              const updatedSession = {
+                ...currentUser,
+                name: matchedRemote.name,
+                role: matchedRemote.role,
+                title: matchedRemote.title,
+                password: matchedRemote.password,
+                avatarBg: getUserAvatarBg(matchedRemote),
+              };
+              setUser(updatedSession);
+              try {
+                localStorage.setItem(STORAGE_AUTH_USER_KEY, JSON.stringify(updatedSession));
+              } catch { /* ignore */ }
+            }
+          }
+        }
+
+        return preparedUsers;
+      } else {
+        // If sheet is empty (only header row), auto-populate sheet with default/current accounts!
+        const usersToSync = users.length > 0 ? users : DEFAULT_USERS;
+        taskService.syncUsers(usersToSync).catch(err => console.warn('Auto-seed users error:', err));
+      }
+    } catch (err) {
+
+      console.warn('refreshUsers error:', err);
+    } finally {
+      setIsSyncingUsers(false);
+    }
+    return users;
+  }, [users]);
+
+  // Initial fetch and periodic background polling to detect any changes in Google Sheet
+  useEffect(() => {
+    let isMounted = true;
+    
+    // Initial sync
+    refreshUsers().catch(() => {});
+
+    // Periodic sync every 10 seconds to catch changes made directly in the Google Sheet
+    const interval = setInterval(() => {
+      if (isMounted) {
+        refreshUsers().catch(() => {});
+      }
+    }, 10000);
+
+    // Sync when browser tab becomes active again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isMounted) {
+        refreshUsers().catch(() => {});
+      }
+    };
+
+    const handleFocus = () => {
+      if (isMounted) {
+        refreshUsers().catch(() => {});
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [refreshUsers]);
 
   const login = (newUser: User) => {
-    setUser(newUser);
+    const preparedUser = {
+      ...newUser,
+      avatarBg: getUserAvatarBg(newUser),
+    };
+    setUser(preparedUser);
     try {
-      localStorage.setItem(STORAGE_AUTH_USER_KEY, JSON.stringify(newUser));
-    } catch (e) { /* ignore */ }
+      localStorage.setItem(STORAGE_AUTH_USER_KEY, JSON.stringify(preparedUser));
+    } catch { /* ignore */ }
   };
 
-  const loginWithCredentials = (username: string, password: string): { success: boolean; error?: string; user?: User } => {
+  const loginWithCredentials = async (
+    username: string, 
+    password: string
+  ): Promise<{ success: boolean; error?: string; user?: User }> => {
     const trimmedUser = username.trim();
     const trimmedPass = password.trim();
 
     if (!trimmedUser) return { success: false, error: 'Please enter your username.' };
     if (!trimmedPass) return { success: false, error: 'Please enter your password.' };
 
-    const found = users.find(
+    // 1. Check local state first
+    let currentUsersList = users;
+    let found = currentUsersList.find(
       u => u.username.toLowerCase() === trimmedUser.toLowerCase() || u.name.toLowerCase() === trimmedUser.toLowerCase()
     );
+
+    // 2. If not found or password doesn't match, fetch live from Google Sheet in case it was updated!
+    if (!found || (found.password && found.password !== trimmedPass)) {
+      try {
+        const freshUsers = await refreshUsers();
+        if (freshUsers && freshUsers.length > 0) {
+          currentUsersList = freshUsers;
+          found = currentUsersList.find(
+            u => u.username.toLowerCase() === trimmedUser.toLowerCase() || u.name.toLowerCase() === trimmedUser.toLowerCase()
+          );
+        }
+      } catch { /* ignore */ }
+    }
 
     if (!found) {
       return { success: false, error: `User "${trimmedUser}" not found in system.` };
@@ -110,7 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     try {
       localStorage.removeItem(STORAGE_AUTH_USER_KEY);
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   };
 
   const addUser = (userData: { username: string; name: string; password?: string; role: UserRole; title?: string }) => {
@@ -127,7 +261,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, error: `User "${username}" already exists.` };
     }
 
-    const randomColor = AVATAR_COLORS[users.length % AVATAR_COLORS.length];
     const newUser: User = {
       id: `user-${Date.now()}`,
       username,
@@ -136,9 +269,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       role: userData.role,
       email: `${username.toLowerCase().replace(/\s+/g, '.')}@hr-dept.internal`,
       title: userData.title?.trim() || (userData.role === 'admin' ? 'HR Administrator' : 'HR Team Member'),
-      avatarBg: randomColor,
-      createdAt: new Date().toISOString(),
+      avatarBg: getUserAvatarBg(username),
+      createdAt: formatDateTimeFormulaSafe(new Date()),
     };
+
 
     const updated = [...users, newUser];
     saveUsersList(updated);
@@ -147,17 +281,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateUser = (userData: User) => {
-    const updated = users.map(u => (u.id === userData.id ? { ...u, ...userData } : u));
+    const prepared = {
+      ...userData,
+      avatarBg: getUserAvatarBg(userData),
+    };
+    const updated = users.map(u => (u.id === userData.id ? { ...u, ...prepared } : u));
     saveUsersList(updated);
     if (user?.id === userData.id) {
-      login(userData);
+      login(prepared);
     }
-    taskService.saveUser(userData).catch(err => console.warn('Failed to update user in sheet:', err));
+    taskService.saveUser(prepared).catch(err => console.warn('Failed to update user in sheet:', err));
     return { success: true };
   };
 
   const deleteUser = (userId: string) => {
-    if (userId === 'admin') {
+    if (userId.toLowerCase() === 'admin') {
       return { success: false, error: 'Default Admin account cannot be deleted.' };
     }
     const updated = users.filter(u => u.id !== userId);
@@ -197,9 +335,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAdmin,
         users,
+        isSyncingUsers,
         login,
         loginWithCredentials,
         logout,
+        refreshUsers,
         addUser,
         updateUser,
         deleteUser,
@@ -220,3 +360,4 @@ export const useAuth = () => {
   }
   return context;
 };
+

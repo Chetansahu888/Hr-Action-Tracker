@@ -33,7 +33,8 @@ const COLS = [
 ];
 
 export const Settings: React.FC = () => {
-  const { user, isAdmin, users, addUser, updateUser, deleteUser } = useAuth();
+  const { user, isAdmin, users, isSyncingUsers, refreshUsers, addUser, updateUser, deleteUser } = useAuth();
+
 
   // New user form state
   const [newUsername, setNewUsername] = useState('');
@@ -408,9 +409,41 @@ export const Settings: React.FC = () => {
 
           {/* Registered Users Table */}
           <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-              Existing System Accounts
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                Existing System Accounts
+              </label>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await refreshUsers();
+                    toast.success('System accounts synced with Google Sheet!');
+                  } catch {
+                    toast.error('Could not sync with Google Sheet');
+                  }
+                }}
+                disabled={isSyncingUsers}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: '#334155',
+                  cursor: isSyncingUsers ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                }}
+              >
+                <RefreshCw size={12} className={isSyncingUsers ? 'animate-spin' : ''} style={{ animation: isSyncingUsers ? 'spin 1s linear infinite' : 'none' }} />
+                {isSyncingUsers ? 'Syncing...' : 'Sync with Sheet'}
+              </button>
+            </div>
+
 
             <div style={{ border: '1px solid #e8ecf0', borderRadius: 12, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>

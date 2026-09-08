@@ -9,7 +9,7 @@ import {
 import { toast } from 'sonner';
 
 export const Login: React.FC = () => {
-  const { loginWithCredentials } = useAuth();
+  const { loginWithCredentials, refreshUsers } = useAuth();
   const navigate = useNavigate();
 
   const [username, setUsername] = useState('');
@@ -17,20 +17,30 @@ export const Login: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    refreshUsers().catch(() => {});
+  }, [refreshUsers]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const res = loginWithCredentials(username, password);
-    setLoading(false);
+    try {
+      const res = await loginWithCredentials(username, password);
+      setLoading(false);
 
-    if (res.success && res.user) {
-      toast.success(`Welcome ${res.user.name}!`);
-      navigate('/tasks');
-    } else {
-      toast.error(res.error || 'Invalid username or password');
+      if (res.success && res.user) {
+        toast.success(`Welcome ${res.user.name}!`);
+        navigate('/tasks');
+      } else {
+        toast.error(res.error || 'Invalid username or password');
+      }
+    } catch {
+      setLoading(false);
+      toast.error('An error occurred during login. Please try again.');
     }
   };
+
 
   return (
     <div
